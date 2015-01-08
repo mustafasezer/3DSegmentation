@@ -45,6 +45,7 @@ bool Object::trainAppearance(CloudPtr cloud, pcl::PointIndices ind){
 
 
 
+    //For control
     /*if(GMM.train(samples)){
         cv::Mat p(1, 2, CV_64FC1);
         p.at<double>(0,0) = samples.at<double>(0,0);
