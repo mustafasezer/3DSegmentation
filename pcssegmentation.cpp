@@ -126,11 +126,11 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
                 EIGEN_ALIGN16 Eigen::Vector3f eigen_values;
                 EIGEN_ALIGN16 Eigen::Matrix3f eigen_vectors;
                 pcl::eigen33(covariance_matrix, eigen_vectors, eigen_values);
-                Eigen::Vector3f nor = K * Eigen::Vector3f(sqrt(eigen_values(0)), sqrt(eigen_values(1)), sqrt(eigen_values(2)));
+                Eigen::Vector3f axes = K * Eigen::Vector3f(sqrt(eigen_values(0)), sqrt(eigen_values(1)), sqrt(eigen_values(2)));
                 Eigen::Vector3f center = Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
 
 
-                Object obj(objects.size(), center, covariance_matrix, eigen_values, eigen_vectors, nor);
+                Object obj(objects.size(), center, covariance_matrix, eigen_values, eigen_vectors, axes);
                 if(obj.trainAppearance(pc_input, *it)){
                     objects.push_back(obj);
                 }

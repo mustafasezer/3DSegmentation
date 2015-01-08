@@ -12,7 +12,9 @@ struct ellipsoidStruct{
     Eigen::Matrix3f cov;
     Eigen::Vector3f eval;
     Eigen::Matrix3f evec;
-    Eigen::Vector3f nor;        //Normalizer
+    Eigen::Vector3f axes;
+    Eigen::Matrix3f normCov;
+    //cv::Mat<3,3,CV_64FC1> normCov;        //Normalizer
     float volume;
 };
 
@@ -22,11 +24,12 @@ typedef struct ellipsoidStruct ellipsoid;
 class Object
 {
 public:
-    Object(int id, Eigen::Vector3f center, Eigen::Matrix3f cov, Eigen::Vector3f eval, Eigen::Matrix3f evec, Eigen::Vector3f nor);
+    Object(int id, Eigen::Vector3f center, Eigen::Matrix3f cov, Eigen::Vector3f eval, Eigen::Matrix3f evec, Eigen::Vector3f axes);
     ~Object();
     bool trainAppearance(CloudPtr cloud, pcl::PointIndices ind);
     cv::Mat rgb2UV(PointT point);
     double pixelCompatibility(cv::Mat point);
+    double distance(PointT p);
     int id;
     ellipsoid e;
     cv::EM GMM;
