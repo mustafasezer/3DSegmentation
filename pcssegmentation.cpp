@@ -7,14 +7,30 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/features/feature.h>*/
 
-#include <pcl/common/centroid.h>
-#include <pcl/ros/conversions.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
+
+#include <pcl/segmentation/min_cut_segmentation.h>
+
+//Includes for region growing
+#include <pcl/search/search.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/features/normal_3d.h>
+//#include <pcl/visualization/cloud_viewer.h>
+//#include <pcl/filters/passthrough.h>
+#include <pcl/segmentation/region_growing.h>
+
+
+
+#include "object.h"
 
 using namespace pcl;
 using namespace Eigen;
-
-
-float K = 2.795483482915108;        // 95% confidence
 
 std::vector<Object> objects;
 
@@ -59,11 +75,43 @@ PCSSegmentation::PCSSegmentation()
             norm(vecm*[(px-centm(1))/x_norm; (py-centm(2))/y_norm; (pz-centm(3))/z_norm]);
 }*/
 
+void PCSSegmentation::visualizeObjectCenter(CloudPtr obj_cloud, Eigen::Vector3f center){
+    PointT centpt;
+    centpt.x = center[0];
+    centpt.y = center[1];
+    centpt.z = center[2];
+    centpt.r = 255;
+    centpt.g = 255;
+    centpt.b = 255;
+    obj_cloud->points.push_back(centpt);
+    centpt.x += 0.005;
+    obj_cloud->points.push_back(centpt);
+    centpt.x -= 0.01;
+    obj_cloud->points.push_back(centpt);
+    centpt.x += 0.005;
+    centpt.y += 0.005;
+    obj_cloud->points.push_back(centpt);
+    centpt.y -= 0.01;
+    obj_cloud->points.push_back(centpt);
+    centpt.y += 0.005;
+    centpt.z += 0.005;
+    obj_cloud->points.push_back(centpt);
+    centpt.z -= 0.01;
+    obj_cloud->points.push_back(centpt);
+}
+
+
 void PCSSegmentation::segmentation(PCS* input, PCS* output)
 {
+    struct timespec t1, t2;
+    double elapsed_time;
+    volatile long long i;
+    clock_gettime(CLOCK_MONOTONIC,  &t1);
+
     cout<<"nT: "<<input->nTime<<endl;
-    ofstream myfile;
-    myfile.open ("/home/mustafasezer/Desktop/coord.txt");
+    //ofstream myfile;
+    //myfile.open ("/home/mustafasezer/Desktop/coord.txt");
+
     for(int t=0;t<input->nTime;t++){
         CloudPtr pc_input = input->pcs.at(t);
         CloudPtr pc_output;
@@ -98,15 +146,15 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
         pcl::fromROSMsg(pc_input,pc_inp);*/
 
         // euclidean clustering
-        double tolerance = 0.02;
-        double minSize = 5;
+        double tolerance = 0.02;        //def: 0.02
+        double minSize = 25;            //def: 5
         double maxSize = 10000;
         typename pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>);
         tree->setInputCloud (pc_input);
 
         std::vector<pcl::PointIndices> cluster_indices;
         pcl::EuclideanClusterExtraction<PointT> ec;
-        ec.setClusterTolerance (tolerance); // 2cm
+        ec.setClusterTolerance (tolerance);
         ec.setMinClusterSize (minSize);
         ec.setMaxClusterSize (maxSize);
         ec.setSearchMethod (tree);
@@ -114,10 +162,12 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
         ec.extract (cluster_indices);
 
 
-        int id = 0;
-        for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
-        {
-            if(t==12){
+        if(objects.size() == 0){
+            //Create an object for each blob at the beginning
+            int id = 0;
+            for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+            {
+                /*//if(t==12){
                 Eigen::Vector4f xyz_centroid;
                 //pcl::compute3DCentroid (incloud, *it, xyz_centroid);
                 EIGEN_ALIGN16 Eigen::Matrix3f covariance_matrix;
@@ -129,37 +179,222 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
                 Eigen::Vector3f axes = K * Eigen::Vector3f(sqrt(eigen_values(0)), sqrt(eigen_values(1)), sqrt(eigen_values(2)));
                 Eigen::Vector3f center = Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
 
-
+                //New object
                 Object obj(objects.size(), center, covariance_matrix, eigen_values, eigen_vectors, axes);
                 if(obj.trainAppearance(pc_input, *it)){
                     objects.push_back(obj);
+                    obj.blobID = id;
+                    std::vector<int> dummy;
+                    dummy.push_back(id);
+                    associations.push_back(dummy);
+
+                    cout << "New Object " << obj.id << " at t:" << t << " Center:";
+                    for(int ii=0; ii<3; ii++){
+                        std::cout << " ";
+                        std::cout << obj.e.center[ii];
+                    }
+                    std::cout << std::endl;
+                }*/
+
+                Object obj(objects.size(), &incloud, *it);
+                if(obj.GMM.isTrained()){
+                    objects.push_back(obj);
+                    obj.blobID = id;
+
+                    std::vector<int> dummy;
+                    associations.push_back(dummy);
+                    associations[id].push_back(obj.id);
+
+                    cout << "New Object " << obj.id << " at t:" << t << " Center:";
+                    for(int ii=0; ii<3; ii++){
+                        std::cout << " ";
+                        std::cout << obj.e.center[ii];
+                    }
+                    std::cout << std::endl;
                 }
-
-                //ellipse e = createEllipse(incloud, *it);
-
-                //TODO
-                //interiorPoints(e, *it);
-
-                // Compute the distance threshold for sample selection
-                //sample_dist_thresh_ = eigen_values.array ().sqrt ().sum () / 3.0;
-                //sample_dist_thresh_ *= sample_dist_thresh_;
-                // //return eigen_values.array ().sqrt ().sum () / 3.0;
 
 
                 for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                     PointT point = pc_input->points[*pit];
-                    myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
+                    //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
                     point.r = r[id];
                     point.g = g[id];
                     point.b = b[id];
                     pc_output->points.push_back(point);
                 }
                 id++;
+                //}
+                visualizeObjectCenter(pc_output, obj.e.center);
             }
         }
+        else{
+            //TODO: Be sure about the place of associations reset!!!
+            //Reset associations
+            for(int i=0; i<associations.size(); i++){
+                associations[i].clear();
+            }
+            associations.clear();
+
+            //For all objects
+            for (int obj_ind=0; obj_ind<objects.size(); obj_ind++){
+                if(objects[obj_ind].disappeared == true){
+                    continue;
+                }
+                double max_compatibility = 0;
+                //For all blobs
+                int id = 0;
+                for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+                {
+                    if(associations.size() == id){
+                        std::vector<int> dummy;
+                        associations.push_back(dummy);
+                    }
+                    //Find points of intersection and calculate compatibility
+                    double sum_compatibility = 0;
+                    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                        PointT point = pc_input->points[*pit];
+
+                        if(objects[obj_ind].distance(point) <= 1){
+                            sum_compatibility += objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
+                        }
+                    }
+                    if(sum_compatibility > max_compatibility){
+                        max_compatibility = sum_compatibility;
+                        objects[obj_ind].blobID = id;
+                    }
+                    id++;
+                }
+                //If object is associated with no blob --> object disappeared, Case 1b
+                //TODO max compatibility tek bir pixel dahi olsa sıfır olmaz, o yüzden yukarıdakı for loop'a counter
+                //eklenip eğer örn. 10 pixelden azsa disappeared falan denebilir.
+                if(max_compatibility==0){
+                    objects[obj_ind].disappeared = true;
+                }
+                else{
+                    associations[objects[obj_ind].blobID].push_back(obj_ind);
+                }
+            }
+
+            //TODO for all blobs
+            int id = 0;
+            for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+            {
+                if(associations[id].size() == 0){
+                    //New object
+
+                    //if(t==12){
+                    /*Eigen::Vector4f xyz_centroid;
+                    //pcl::compute3DCentroid (incloud, *it, xyz_centroid);
+                    EIGEN_ALIGN16 Eigen::Matrix3f covariance_matrix;
+                    //computeCovarianceMatrixNormalized (incloud, xyz_centroid, covariance_matrix);
+                    computeMeanAndCovarianceMatrix(incloud, *it, covariance_matrix, xyz_centroid);
+                    EIGEN_ALIGN16 Eigen::Vector3f eigen_values;
+                    EIGEN_ALIGN16 Eigen::Matrix3f eigen_vectors;
+                    pcl::eigen33(covariance_matrix, eigen_vectors, eigen_values);
+                    Eigen::Vector3f axes = K * Eigen::Vector3f(sqrt(eigen_values(0)), sqrt(eigen_values(1)), sqrt(eigen_values(2)));
+                    Eigen::Vector3f center = Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
+
+                    //New object
+                    Object obj(objects.size(), center, covariance_matrix, eigen_values, eigen_vectors, axes);
+                    if(obj.trainAppearance(pc_input, *it)){*/
+                    Object obj(objects.size(), &incloud, *it);
+                    if(obj.GMM.isTrained()){
+                        objects.push_back(obj);
+                        obj.blobID = id;
+                        associations[id].push_back(obj.id);
+
+                        cout << "New Object " << obj.id << " at t:" << t << " Center:";
+                        for(int ii=0; ii<3; ii++){
+                            std::cout << " ";
+                            std::cout << obj.e.center[ii];
+                        }
+                        std::cout << std::endl;
+                    }
+
+                    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                        PointT point = pc_input->points[*pit];
+                        //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
+                        point.r = r[associations[id][0]];
+                        point.g = g[associations[id][0]];
+                        point.b = b[associations[id][0]];
+                        pc_output->points.push_back(point);
+                    }
+
+                    //}
+                    //visualizeObjectCenter(pc_output, obj.e.center);
+                }
+                else if(associations[id].size() == 1){
+                    //One to one
+
+                    /*Eigen::Vector4f xyz_centroid;
+                    //pcl::compute3DCentroid (incloud, *it, xyz_centroid);
+                    EIGEN_ALIGN16 Eigen::Matrix3f covariance_matrix;
+                    //computeCovarianceMatrixNormalized (incloud, xyz_centroid, covariance_matrix);
+                    computeMeanAndCovarianceMatrix(incloud, *it, covariance_matrix, xyz_centroid);
+                    EIGEN_ALIGN16 Eigen::Vector3f eigen_values;
+                    EIGEN_ALIGN16 Eigen::Matrix3f eigen_vectors;
+                    pcl::eigen33(covariance_matrix, eigen_vectors, eigen_values);
+                    Eigen::Vector3f axes = K * Eigen::Vector3f(sqrt(eigen_values(0)), sqrt(eigen_values(1)), sqrt(eigen_values(2)));
+                    Eigen::Vector3f center = Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
+
+                    //Update object
+                    objects[associations[id][0]].updateObject(associations[id][0], center, covariance_matrix, eigen_values, eigen_vectors, axes);*/
+                    int objID = associations[id][0];
+                    if(objects[objID].updateAppearance(&incloud, *it)){
+                        objects[objID].blobID = id;
+
+                        //TODO The following push back is removed CHECK CHECK CHECK!!!
+                        //associations[id].push_back(objects[associations[id][0]].id);
+
+                        /*cout << "Object updated at t:" << t << " Center:";
+                        for(int ii=0; ii<3; ii++){
+                            std::cout << " ";
+                            std::cout << objects[associations[id][0]].e.center[ii];
+                        }
+                        std::cout << std::endl;*/
+                    }
+                    //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
+
+                    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                        PointT point = pc_input->points[*pit];
+                        //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
+                        point.r = r[objID];
+                        point.g = g[objID];
+                        point.b = b[objID];
+                        pc_output->points.push_back(point);
+                    }
+                    //visualizeObjectCenter(pc_output, objects[associations[id][0]].e.center);
+                }
+                else{
+                    //Multiple Objects Case
+                    std::cout << "Blob " << id << " has multiple objects: ";
+                    for(int ii=0; ii<associations[id].size(); ii++)
+                        std::cout << associations[id][ii] << " ";
+                    std::cout << "at t=" << t << std::endl;
+
+                    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                        PointT point = pc_input->points[*pit];
+                        //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
+                        point.r = r[associations[id][0]];
+                        point.g = g[associations[id][0]];
+                        point.b = b[associations[id][0]];
+                        pc_output->points.push_back(point);
+                    }
+                }
+
+                for(int ii=0; ii<associations[id].size(); ii++){
+                    visualizeObjectCenter(pc_output, objects[associations[id][ii]].e.center);
+                }
+                id++;
+            }
+        }
+
         output->pcs.push_back(pc_output);
     }
-    myfile.close();
+    //myfile.close();
+    clock_gettime(CLOCK_MONOTONIC,  &t2);
+    elapsed_time = (t2.tv_sec - t1.tv_sec) + (double) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
+    std::cout << "Elapsed time: " << elapsed_time << std::endl;
 }
 
 void PCSSegmentation::segmentationRegionGrow(PCS* input, PCS* output){
@@ -167,11 +402,6 @@ void PCSSegmentation::segmentationRegionGrow(PCS* input, PCS* output){
         CloudPtr pc_input = input->pcs.at(t);
         CloudPtr pc_output;
         pc_output.reset(new Cloud);
-
-
-
-
-
 
 
         pcl::search::Search<pcl::PointXYZRGB>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGB> > (new pcl::search::KdTree<pcl::PointXYZRGB>);
