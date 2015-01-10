@@ -25,8 +25,6 @@
 //#include <pcl/filters/passthrough.h>
 #include <pcl/segmentation/region_growing.h>
 
-
-
 #include "object.h"
 
 using namespace pcl;
@@ -44,11 +42,53 @@ PCSSegmentation::PCSSegmentation()
     g = new int[maxID];
     b = new int[maxID];
 
+    int rr[8] = {255, 0, 127, 127, 255, 0, 0, 255};
+    int gg[8] = {0, 255, 255, 0, 191, 255, 63, 0};
+    int bb[8] = {0, 255, 0, 255, 0, 63, 255, 191};
+
     for(int i=0;i<maxID;i++){
-        r[i] = rand() % 256;
-        g[i] = rand() % 256;
-        b[i] = rand() % 256;
+        if(i<8){
+            r[i] = rr[i];
+            g[i] = gg[i];
+            b[i] = bb[i];
+        }
+        else{
+            r[i] = rand() % 256;
+            g[i] = rand() % 256;
+            b[i] = rand() % 256;
+        }
     }
+
+    /*cv::Mat hsvcolors(8, 1, CV_8UC3);
+    hsvcolors.at<cv::Vec3b>(0, 0)[0] = 0;
+    hsvcolors.at<cv::Vec3b>(1, 0)[0] = 90;
+    hsvcolors.at<cv::Vec3b>(2, 0)[0] = 135;
+    hsvcolors.at<cv::Vec3b>(3, 0)[0] = 45;
+    hsvcolors.at<cv::Vec3b>(4, 0)[0] = 23;
+    hsvcolors.at<cv::Vec3b>(5, 0)[0] = 68;
+    hsvcolors.at<cv::Vec3b>(6, 0)[0] = 113;
+    hsvcolors.at<cv::Vec3b>(7, 0)[0] = 158;
+
+    for (int i =0; i <hsvcolors.cols; i++){
+        for (int j =0; j <hsvcolors.rows; j++) {
+            hsvcolors.at<cv::Vec3b>(j, i)[1] = 255;
+            hsvcolors.at<cv::Vec3b>(j, i)[1] = 255;
+            for(int k = 0; k <image.channels(); k++) {
+                uchar col = intensity.val[k];
+            }
+        }
+    }
+    cv::Mat bgrcolors;
+    cv::cvtColor(hsvcolors, bgrcolors, CV_HSV2BGR);
+    for(int i=0;i<8;i++){
+        r[i] = bgrcolors.at<cv::Vec3b>(i,0)[2];
+        g[i] = bgrcolors.at<cv::Vec3b>(i,0)[1];
+        b[i] = bgrcolors.at<cv::Vec3b>(i,0)[0];
+    }
+    cv::namedWindow("image", CV_WINDOW_AUTOSIZE);
+    cv::imshow("image", bgrcolors);
+    cv::waitKey();*/
+
 }
 
 /*ellipse PCSSegmentation::createEllipse(Cloud incloud, pcl::PointIndices ind){
@@ -103,6 +143,7 @@ void PCSSegmentation::visualizeObjectCenter(CloudPtr obj_cloud, Eigen::Vector3f 
 
 void PCSSegmentation::segmentation(PCS* input, PCS* output)
 {
+    objects.clear();
     struct timespec t1, t2;
     double elapsed_time;
     volatile long long i;
@@ -205,12 +246,15 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
                     associations.push_back(dummy);
                     associations[id].push_back(obj.id);
 
-                    cout << "New Object " << obj.id << " at t:" << t << " Center:";
+                    cout << "New Object " << obj.id << " of blob " << id << " at t:" << t << " Center:";
                     for(int ii=0; ii<3; ii++){
                         std::cout << " ";
                         std::cout << obj.e.center[ii];
                     }
                     std::cout << std::endl;
+                }
+                else{
+                    std::cout << "ERROR: GMM not trained\n";
                 }
 
 
@@ -238,6 +282,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
             //For all objects
             for (int obj_ind=0; obj_ind<objects.size(); obj_ind++){
                 if(objects[obj_ind].disappeared == true){
+                    //occluder'ının ellipsoid'ini inherit etmeli
                     continue;
                 }
                 double max_compatibility = 0;
@@ -303,12 +348,15 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
                         obj.blobID = id;
                         associations[id].push_back(obj.id);
 
-                        cout << "New Object " << obj.id << " at t:" << t << " Center:";
+                        cout << "New Object " << obj.id << " of blob " << id << " at t:" << t << " Center:";
                         for(int ii=0; ii<3; ii++){
                             std::cout << " ";
                             std::cout << obj.e.center[ii];
                         }
                         std::cout << std::endl;
+                    }
+                    else{
+                        std::cout << "ERROR: GMM not trained\n";
                     }
 
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
@@ -340,28 +388,33 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
                     //Update object
                     objects[associations[id][0]].updateObject(associations[id][0], center, covariance_matrix, eigen_values, eigen_vectors, axes);*/
                     int objID = associations[id][0];
-                    if(objects[objID].updateAppearance(&incloud, *it)){
-                        objects[objID].blobID = id;
+                    if(objects[objID].occluded == false){
+                        if(objects[objID].updateAppearance(&incloud, *it)){
+                            objects[objID].blobID = id;
 
-                        //TODO The following push back is removed CHECK CHECK CHECK!!!
-                        //associations[id].push_back(objects[associations[id][0]].id);
+                            //TODO The following push back is removed CHECK CHECK CHECK!!!
+                            //associations[id].push_back(objects[associations[id][0]].id);
 
-                        /*cout << "Object updated at t:" << t << " Center:";
+                            /*cout << "Object updated at t:" << t << " Center:";
                         for(int ii=0; ii<3; ii++){
                             std::cout << " ";
                             std::cout << objects[associations[id][0]].e.center[ii];
                         }
                         std::cout << std::endl;*/
-                    }
-                    //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
+                        }
+                        else{
+                            std::cout << "ERROR: Object appearance could not be updated\n";
+                        }
+                        //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
 
-                    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
-                        PointT point = pc_input->points[*pit];
-                        //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
-                        point.r = r[objID];
-                        point.g = g[objID];
-                        point.b = b[objID];
-                        pc_output->points.push_back(point);
+                        for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                            PointT point = pc_input->points[*pit];
+                            //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
+                            point.r = r[objID];
+                            point.g = g[objID];
+                            point.b = b[objID];
+                            pc_output->points.push_back(point);
+                        }
                     }
                     //visualizeObjectCenter(pc_output, objects[associations[id][0]].e.center);
                 }
@@ -370,15 +423,45 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
                     std::cout << "Blob " << id << " has multiple objects: ";
                     for(int ii=0; ii<associations[id].size(); ii++)
                         std::cout << associations[id][ii] << " ";
-                    std::cout << "at t=" << t << std::endl;
+                    std::cout << "at t=" << t;
+
+                    double maxBhattCoeff = 0;
+                    for(int j=0; j<associations[id].size()-1; j++){
+                        for(int k=j+1; k<associations[id].size(); k++){
+                            double bhattCoeff = Object::bhattacharyyaCoeff(objects[associations[id][j]].GMM, objects[associations[id][k]].GMM, 2);
+                            if(bhattCoeff>maxBhattCoeff){
+                                maxBhattCoeff = bhattCoeff;
+                            }
+                        }
+                    }
+                    cout << " Max Bhat Coeff = " << maxBhattCoeff << std::endl;
+
 
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                         PointT point = pc_input->points[*pit];
-                        //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
-                        point.r = r[associations[id][0]];
-                        point.g = g[associations[id][0]];
-                        point.b = b[associations[id][0]];
-                        pc_output->points.push_back(point);
+
+                        if(maxBhattCoeff<0.99){
+                            double maxRelation = 0;
+                            int objID;
+                            for(int j=0; j<associations[id].size(); j++){
+                                double relation = objects[associations[id][j]].pixelRelation(point);
+                                if(relation > maxRelation){
+                                    maxRelation = relation;
+                                    objID = j;
+                                }
+                            }
+                            point.r = r[objID];
+                            point.g = g[objID];
+                            point.b = b[objID];
+                            pc_output->points.push_back(point);
+                        }
+                        else{
+                            //A pixel is associated with several objects
+                            point.r = 255;
+                            point.g = 255;
+                            point.b = 255;
+                            pc_output->points.push_back(point);
+                        }
                     }
                 }
 
@@ -391,6 +474,17 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
 
         output->pcs.push_back(pc_output);
     }
+
+
+    /*for(int k=0; k<objects.size(); k++){
+        for(int l=0; l<objects.size(); l++){
+            cout << "Bhatt " << k << " and " << l << " = " << Object::bhattacharyyaCoeff(objects[k].GMM, objects[l].GMM, 1) << endl;
+        }
+    }*/
+
+
+
+
     //myfile.close();
     clock_gettime(CLOCK_MONOTONIC,  &t2);
     elapsed_time = (t2.tv_sec - t1.tv_sec) + (double) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
@@ -449,13 +543,47 @@ void PCSSegmentation::segmentationRegionGrow(PCS* input, PCS* output){
 
         pc_output = reg.getColoredCloud ();
 
+        output->pcs.push_back(pc_output);
+    }
+}
 
 
+void PCSSegmentation::segmentationEuclidian(PCS* input, PCS* output){
+    cout<<"nT: "<<input->nTime<<endl;
+    for(int t=0;t<input->nTime;t++){
+        CloudPtr pc_input = input->pcs.at(t);
+        CloudPtr pc_output;
+        pc_output.reset(new Cloud);
 
+        // euclidean clustering
+        double tolerance = 0.02;
+        double minSize = 5;
+        double maxSize = 10000;
+        typename pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>);
+        tree->setInputCloud (pc_input);
 
+        std::vector<pcl::PointIndices> cluster_indices;
+        pcl::EuclideanClusterExtraction<PointT> ec;
+        ec.setClusterTolerance (tolerance); // 2cm
+        ec.setMinClusterSize (minSize);
+        ec.setMaxClusterSize (maxSize);
+        ec.setSearchMethod (tree);
+        ec.setInputCloud( pc_input);
+        ec.extract (cluster_indices);
 
+        int id = 0;
+        for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+        {
+            for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                PointT point = pc_input->points[*pit];
+                point.r = r[id];
+                point.g = g[id];
+                point.b = b[id];
+                pc_output->points.push_back(point);
+            }
 
-
+            id++;
+        }
 
         output->pcs.push_back(pc_output);
     }

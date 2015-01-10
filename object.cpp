@@ -1,4 +1,5 @@
 #include "object.h"
+#include <cmath>
 
 #include <pcl/features/feature.h>     //For eigen33
 //Includes for ellipsoid calculations
@@ -50,6 +51,7 @@ Object::Object(int id_, Cloud *cld, pcl::PointIndices ind)
     //cloud = cld;
     GMM = cv::EM(5, cv::EM::COV_MAT_DIAGONAL);
     disappeared = false;
+    maxVolume = 0;
 
     updateAppearance(cld, ind);
 
@@ -70,6 +72,48 @@ cv::Mat Object::rgb2UV(PointT point){
     p.at<double>(0,0) = -0.147*point.r - 0.289*point.g + 0.436*point.b;
     p.at<double>(0,1) =  0.615*point.r - 0.515*point.g - 0.100*point.b;
     return p;
+}
+
+double Object::bhattacharyyaCoeff(cv::EM gmm1, cv::EM gmm2, int formula){
+    cv::Mat mean1 = gmm1.getMat("means");
+    cv::Mat weight1 = gmm1.getMat("weights");
+    std::vector<cv::Mat> covs1 = gmm1.getMatVector("covs");
+
+    cv::Mat mean2 = gmm2.getMat("means");
+    cv::Mat weight2 = gmm2.getMat("weights");
+    std::vector<cv::Mat> covs2 = gmm2.getMatVector("covs");
+
+    //std::cout << weight1.rows << "x" << weight1.cols << " " << weight2.rows << "x" << weight2.cols << std::endl;
+
+    cv::Mat bhat_dist = cv::Mat(1,1, CV_64F, double(0));
+    //std::cout << bhat_dist.at<double>(0,0) << std::endl;
+
+
+    if(formula==1){
+        //Bhattacharyya based calculation as described in the paper
+        for(int i=0; i<gmm1.getInt("nclusters"); i++){
+            for(int j=0; j<gmm2.getInt("nclusters"); j++){
+                cv::Mat COV = covs1[i]+covs2[j];
+                //std::cout << covs1[i].rows << "x" << covs1[i].cols << " " << covs2[j].rows << "x" << covs2[j].cols << std::endl;
+                cv::Mat meanDiff = mean1.row(i)-mean2.row(j);
+                //std::cout << "1x" << mean1.row(i).cols << " and 1x" << mean2.row(j).cols << std::endl;
+                bhat_dist += weight1.at<double>(0,i) * weight2.at<double>(0,j) * ( 0.125*meanDiff*(COV.inv()/2)*meanDiff.t() + 0.5*log( cv::determinant(COV/2) / sqrt( cv::determinant(covs1[i])*cv::determinant(covs2[j]) ) ) );
+            }
+        }
+    }
+    else if(formula==2){
+        //My Battacharyya based calculation
+        for(int i=0; i<gmm1.getInt("nclusters"); i++){
+            cv::Mat COV = covs1[i]+covs2[i];
+            cv::Mat meanDiff = mean1.row(i)-mean2.row(i);
+            bhat_dist += weight1.at<double>(0,i) * weight2.at<double>(0,i) * ( 0.125*meanDiff*(COV.inv()/2)*meanDiff.t() + 0.5*log( cv::determinant(COV/2) / sqrt( cv::determinant(covs1[i])*cv::determinant(covs2[i]) ) ) );
+        }
+    }
+    return 1/exp(bhat_dist.at<double>(0,0));
+}
+
+double Object::pixelRelation(PointT p){
+    return pixelCompatibility(rgb2UV(p))/distance(p);
 }
 
 double Object::distance(PointT p){
@@ -99,6 +143,17 @@ bool Object::updateAppearance(Cloud *cld, pcl::PointIndices ind){
         e.normCov(i,i) = 1/e.axes[i];
     }
     e.normCov = e.evec * e.normCov;
+
+    if(e.volume > maxVolume){
+        maxVolume = e.volume;
+    }
+    occlusionRatio = e.volume/maxVolume;
+    if(occlusionRatio < 0.15){
+        occluded = true;
+    }
+    else{
+        occluded = false;
+    }
 
     cv::Mat samples(ind.indices.size(), 2, CV_64FC1);
     for (std::vector<int>::const_iterator pit = ind.indices.begin (); pit != ind.indices.end (); pit++){

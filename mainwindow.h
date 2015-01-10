@@ -34,13 +34,15 @@ private slots:
 
     void on_pushButton_process1_2_clicked();
 
+    void on_pushButton_process1_3_clicked();
+
 private:
     void setupgui();
 
 private:
     Ui::MainWindow *ui;
     PCLViewer *pclViewer_raw, *pclViewer_result, *pclViewer_gt;
-    PCS *pcs_raw, *pcs_result, *pcs_gt;
+    PCS *pcs_raw, *pcs_result, *pcs_result2, *pcs_result3, *pcs_gt;
 
     QString currentDirectory;
     bool isLoaded_raw, isLoaded_gt, isLoaded_result;

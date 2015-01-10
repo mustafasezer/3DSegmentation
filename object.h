@@ -41,16 +41,19 @@ public:
     //bool updateObject(int id_, Eigen::Vector3f center, Eigen::Matrix3f cov, Eigen::Vector3f eval, Eigen::Matrix3f evec, Eigen::Vector3f axes);
     bool updateAppearance(Cloud *cld, pcl::PointIndices ind);
     static cv::Mat rgb2UV(PointT point);
+    static double bhattacharyyaCoeff(cv::EM gmm1, cv::EM gmm2, int formula);
     double pixelCompatibility(cv::Mat point);
     double distance(PointT p);
+    double pixelRelation(PointT p);
     int id;
     ellipsoid e;
     cv::EM GMM;
     float maxVolume;
+    double occlusionRatio;
     int blobID;
     bool disappeared;
     bool is1to1;
-    bool isoccluded;
+    bool occluded;
 
     CloudPtr cloud;
 

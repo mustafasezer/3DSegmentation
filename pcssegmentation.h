@@ -9,6 +9,7 @@ class PCSSegmentation
 public:
     PCSSegmentation();
     void segmentation(PCS* input, PCS* output);
+    void segmentationEuclidian(PCS* input, PCS* output);
     void segmentationRegionGrow(PCS* input, PCS* output);
 
     void visualizeObjectCenter(CloudPtr obj_cloud, Eigen::Vector3f center);

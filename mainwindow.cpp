@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent) :
     isLoaded_gt = 0;
     isLoaded_raw = 0;
     isLoaded_result = 0;
+
 }
 
 MainWindow::~MainWindow()
@@ -85,6 +86,7 @@ void MainWindow::setupgui()
     ui->pushButton_stop->setEnabled(1);
     ui->pushButton_process1->setEnabled(1);
     ui->pushButton_process1_2->setEnabled(true);
+    ui->pushButton_process1_3->setEnabled(true);
 }
 
 void MainWindow::on_horizontalSlider_valueChanged(int value)
@@ -133,15 +135,31 @@ void MainWindow::on_pushButton_process1_clicked()
     pclViewer_result->setGeometry(382+0,600,700,500);
     pclViewer_result->show();
     isLoaded_result = 1;
+    ui->pushButton_process1->setEnabled(false);
 }
 
 void MainWindow::on_pushButton_process1_2_clicked()
 {
-    pcs_result = new PCS();
+    ui->pushButton_process1_2->setEnabled(false);
+    pcs_result2 = new PCS();
     PCSSegmentation seg;
-    seg.segmentationRegionGrow(pcs_raw, pcs_result);
+    seg.segmentationRegionGrow(pcs_raw, pcs_result2);
     pclViewer_result = new PCLViewer();
-    pclViewer_result->setPCS(pcs_result);
+    pclViewer_result->setPCS(pcs_result2);
+    pclViewer_result->setWindowTitle("PCS processing result data");
+    pclViewer_result->setGeometry(382+0,600,700,500);
+    pclViewer_result->show();
+    isLoaded_result = 1;
+}
+
+void MainWindow::on_pushButton_process1_3_clicked()
+{
+    ui->pushButton_process1_3->setEnabled(false);
+    pcs_result3 = new PCS();
+    PCSSegmentation seg;
+    seg.segmentationEuclidian(pcs_raw, pcs_result3);
+    pclViewer_result = new PCLViewer();
+    pclViewer_result->setPCS(pcs_result3);
     pclViewer_result->setWindowTitle("PCS processing result data");
     pclViewer_result->setGeometry(382+0,600,700,500);
     pclViewer_result->show();
