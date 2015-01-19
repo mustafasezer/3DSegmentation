@@ -269,15 +269,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
 
                 objects[id].pointIndices.clear();
                 objects[id].pointIndices = it->indices;
-
-                /*for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
-                    PointT point = pc_input->points[*pit];
-                    //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
-                    point.r = r[id];
-                    point.g = g[id];
-                    point.b = b[id];
-                    pc_output->points.push_back(point);
-                }*/
                 id++;
                 //}
                 visualizeObjectCenter(pc_output, obj.e.center);
@@ -388,15 +379,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                     //objects[obj.id].pointIndices.clear();
                     objects[obj.id].pointIndices = it->indices;
 
-                    /*for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
-                        PointT point = pc_input->points[*pit];
-                        //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
-                        point.r = r[associations[id][0]];
-                        point.g = g[associations[id][0]];
-                        point.b = b[associations[id][0]];
-                        pc_output->points.push_back(point);
-                    }*/
-
                     //}
                     //visualizeObjectCenter(pc_output, obj.e.center);
                 }
@@ -438,15 +420,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
 
                         //objects[objID].pointIndices.clear();
                         objects[objID].pointIndices = it->indices;
-
-                        /*for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
-                            PointT point = pc_input->points[*pit];
-                            //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
-                            point.r = r[objID];
-                            point.g = g[objID];
-                            point.b = b[objID];
-                            pc_output->points.push_back(point);
-                        }*/
                     }
                     //Occluder list update
                     /*else{
@@ -497,12 +470,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                                 }
                             }
                             objects[objID].pointIndices.push_back(*pit);
-
-
-                            /*point.r = r[objID];
-                            point.g = g[objID];
-                            point.b = b[objID];
-                            pc_output->points.push_back(point);*/
                         }
                         else{
                             //A pixel is associated with several objects
