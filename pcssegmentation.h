@@ -12,6 +12,7 @@ public:
     void segmentationEuclidian(PCS* input, PCS* output);
     void segmentationRegionGrow(PCS* input, PCS* output);
 
+    void showObject(int id, CloudPtr pc_input, CloudPtr pc_output);
     void visualizeObjectCenter(CloudPtr obj_cloud, Eigen::Vector3f center);
 
     //bool isInterior(PointT p, ellipse e);

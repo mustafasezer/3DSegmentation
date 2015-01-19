@@ -133,20 +133,23 @@ double Object::pixelCompatibility(cv::Mat point){
 bool Object::updatePosition(Cloud *cld, pcl::PointIndices ind){
     int i=0;
 
-    Eigen::Vector4f xyz_centroid;
-    computeMeanAndCovarianceMatrix(*cld, ind, e.cov, xyz_centroid);
-    pcl::eigen33(e.cov, e.evec, e.eval);
-    e.axes = K * Eigen::Vector3f(sqrt(e.eval(0)), sqrt(e.eval(1)), sqrt(e.eval(2)));
-    e.center = Eigen::Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
-    e.volume = e.axes.prod() * M_PI * 4/3;
-    e.normCov = Eigen::Matrix<float, 3, 3>::Identity();
-    for(int i=0; i<3; i++){
-        e.normCov(i,i) = 1/e.axes[i];
-    }
-    e.normCov = e.evec * e.normCov;
+    ellipsoid ell;
 
-    if(e.volume > maxVolume){
-        maxVolume = e.volume;
+    Eigen::Vector4f xyz_centroid;
+    computeMeanAndCovarianceMatrix(*cld, ind, ell.cov, xyz_centroid);
+    pcl::eigen33(ell.cov, ell.evec, ell.eval);
+    ell.axes = K * Eigen::Vector3f(sqrt(ell.eval(0)), sqrt(ell.eval(1)), sqrt(ell.eval(2)));
+    ell.center = Eigen::Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
+    ell.volume = ell.axes.prod() * M_PI * 4/3;
+    ell.normCov = Eigen::Matrix<float, 3, 3>::Identity();
+    for(int i=0; i<3; i++){
+        ell.normCov(i,i) = 1/ell.axes[i];
+    }
+    ell.normCov = ell.evec * ell.normCov;
+
+    if(ell.volume > maxVolume){
+        maxVolume = ell.volume;
+        e = ell;
     }
     occlusionRatio = 1-(e.volume/maxVolume);
     if(occlusionRatio > 0.65){
@@ -220,6 +223,8 @@ bool Object::updateAppearance(Cloud *cld, pcl::PointIndices ind){
         occluded = false;
         disappeared = false;
     }*/
+
+    //updatePosition(cld, ind);
 
     cv::Mat samples(ind.indices.size(), 2, CV_64FC1);
     for (std::vector<int>::const_iterator pit = ind.indices.begin (); pit != ind.indices.end (); pit++){

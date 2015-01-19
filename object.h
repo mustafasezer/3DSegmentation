@@ -58,6 +58,7 @@ public:
     bool occluded;
 
     CloudPtr cloud;
+    std::vector<int> pointIndices;
 
     std::vector<int> occluders;
     std::vector<int> occluding;

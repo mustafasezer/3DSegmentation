@@ -115,6 +115,16 @@ PCSSegmentation::PCSSegmentation()
             norm(vecm*[(px-centm(1))/x_norm; (py-centm(2))/y_norm; (pz-centm(3))/z_norm]);
 }*/
 
+void PCSSegmentation::showObject(int id, CloudPtr pc_input, CloudPtr pc_output){
+    for(int i=0; i<objects[id].pointIndices.size(); i++){
+        PointT point = pc_input->points[objects[id].pointIndices[i]];
+        point.r = r[id];
+        point.g = g[id];
+        point.b = b[id];
+        pc_output->points.push_back(point);
+    }
+}
+
 void PCSSegmentation::visualizeObjectCenter(CloudPtr obj_cloud, Eigen::Vector3f center){
     PointT centpt;
     centpt.x = center[0];
@@ -257,18 +267,21 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                     std::cout << "ERROR: GMM not trained\n";
                 }
 
+                objects[id].pointIndices.clear();
+                objects[id].pointIndices = it->indices;
 
-                for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                /*for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                     PointT point = pc_input->points[*pit];
                     //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
                     point.r = r[id];
                     point.g = g[id];
                     point.b = b[id];
                     pc_output->points.push_back(point);
-                }
+                }*/
                 id++;
                 //}
                 visualizeObjectCenter(pc_output, obj.e.center);
+                showObject(0, pc_input, pc_output);
             }
         }
         else{
@@ -281,6 +294,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
 
             //For all objects
             for (int obj_ind=0; obj_ind<objects.size(); obj_ind++){
+                objects[obj_ind].pointIndices.clear();
                 if(objects[obj_ind].disappeared == true){
                     //occluder'ının ellipsoid'ini inherit etmeli
                     continue;
@@ -371,14 +385,17 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                         std::cout << "ERROR: GMM not trained\n";
                     }
 
-                    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                    //objects[obj.id].pointIndices.clear();
+                    objects[obj.id].pointIndices = it->indices;
+
+                    /*for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                         PointT point = pc_input->points[*pit];
                         //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
                         point.r = r[associations[id][0]];
                         point.g = g[associations[id][0]];
                         point.b = b[associations[id][0]];
                         pc_output->points.push_back(point);
-                    }
+                    }*/
 
                     //}
                     //visualizeObjectCenter(pc_output, obj.e.center);
@@ -419,14 +436,17 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                         }
                         //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
 
-                        for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
+                        //objects[objID].pointIndices.clear();
+                        objects[objID].pointIndices = it->indices;
+
+                        /*for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                             PointT point = pc_input->points[*pit];
                             //myfile << t << " " << id << " " << point.x << " " << point.y << " " << point.z << std::endl;
                             point.r = r[objID];
                             point.g = g[objID];
                             point.b = b[objID];
                             pc_output->points.push_back(point);
-                        }
+                        }*/
                     }
                     //Occluder list update
                     /*else{
@@ -459,6 +479,9 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                     }
                     cout << " Max Bhat Coeff = " << maxBhattCoeff << std::endl;
 
+                    /*for(int j=0; j<associations[id].size(); j++){
+                        objects[associations[id][j]].pointIndices.clear();
+                    }*/
 
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                         PointT point = pc_input->points[*pit];
@@ -473,10 +496,13 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                                     objID = j;
                                 }
                             }
-                            point.r = r[objID];
+                            objects[objID].pointIndices.push_back(*pit);
+
+
+                            /*point.r = r[objID];
                             point.g = g[objID];
                             point.b = b[objID];
-                            pc_output->points.push_back(point);
+                            pc_output->points.push_back(point);*/
                         }
                         else{
                             //A pixel is associated with several objects
@@ -491,6 +517,11 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                 for(int ii=0; ii<associations[id].size(); ii++){
                     visualizeObjectCenter(pc_output, objects[associations[id][ii]].e.center);
                 }
+
+                for(int j=0; j<objects.size(); j++){
+                    showObject(j, pc_input, pc_output);
+                }
+
                 //Increment blob id
                 id++;
             }
