@@ -8,7 +8,7 @@ class PCSSegmentation
 {
 public:
     PCSSegmentation();
-    void segmentation(PCS* input, PCS* output);
+    void segmentation(PCS* input, PCS* output, int maxTime);
     void segmentationEuclidian(PCS* input, PCS* output);
     void segmentationRegionGrow(PCS* input, PCS* output);
 

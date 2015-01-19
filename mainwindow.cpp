@@ -128,7 +128,12 @@ void MainWindow::on_pushButton_process1_clicked()
 {
     pcs_result = new PCS();
     PCSSegmentation seg;
-    seg.segmentation(pcs_raw, pcs_result);
+    int maxTime = ui->convertUntil->text().toInt();
+    if(maxTime>pcs_raw->nTime || maxTime<0){
+        maxTime = pcs_raw->nTime;
+    }
+    ui->horizontalSlider->setMaximum(maxTime-1);
+    seg.segmentation(pcs_raw, pcs_result, maxTime);
     pclViewer_result = new PCLViewer();
     pclViewer_result->setPCS(pcs_result);
     pclViewer_result->setWindowTitle("PCS processing result data");
@@ -144,11 +149,11 @@ void MainWindow::on_pushButton_process1_2_clicked()
     pcs_result2 = new PCS();
     PCSSegmentation seg;
     seg.segmentationRegionGrow(pcs_raw, pcs_result2);
-    pclViewer_result = new PCLViewer();
-    pclViewer_result->setPCS(pcs_result2);
-    pclViewer_result->setWindowTitle("PCS processing result data");
-    pclViewer_result->setGeometry(382+0,600,700,500);
-    pclViewer_result->show();
+    pclViewer_result2 = new PCLViewer();
+    pclViewer_result2->setPCS(pcs_result2);
+    pclViewer_result2->setWindowTitle("PCS processing result data");
+    pclViewer_result2->setGeometry(382+0,600,700,500);
+    pclViewer_result2->show();
     isLoaded_result = 1;
 }
 
@@ -158,10 +163,10 @@ void MainWindow::on_pushButton_process1_3_clicked()
     pcs_result3 = new PCS();
     PCSSegmentation seg;
     seg.segmentationEuclidian(pcs_raw, pcs_result3);
-    pclViewer_result = new PCLViewer();
-    pclViewer_result->setPCS(pcs_result3);
-    pclViewer_result->setWindowTitle("PCS processing result data");
-    pclViewer_result->setGeometry(382+0,600,700,500);
-    pclViewer_result->show();
+    pclViewer_result3 = new PCLViewer();
+    pclViewer_result3->setPCS(pcs_result3);
+    pclViewer_result3->setWindowTitle("PCS processing result data");
+    pclViewer_result3->setGeometry(382+0,600,700,500);
+    pclViewer_result3->show();
     isLoaded_result = 1;
 }

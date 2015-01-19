@@ -141,7 +141,7 @@ void PCSSegmentation::visualizeObjectCenter(CloudPtr obj_cloud, Eigen::Vector3f 
 }
 
 
-void PCSSegmentation::segmentation(PCS* input, PCS* output)
+void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
 {
     objects.clear();
     struct timespec t1, t2;
@@ -149,11 +149,11 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
     volatile long long i;
     clock_gettime(CLOCK_MONOTONIC,  &t1);
 
-    cout<<"nT: "<<input->nTime<<endl;
+    cout<<"nT: "<<input->nTime<<" max Time: " <<maxTime<<endl;
     //ofstream myfile;
     //myfile.open ("/home/mustafasezer/Desktop/coord.txt");
 
-    for(int t=0;t<input->nTime;t++){
+    for(int t=0;t<maxTime;t++){
         CloudPtr pc_input = input->pcs.at(t);
         CloudPtr pc_output;
         pc_output.reset(new Cloud);
@@ -187,7 +187,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
         pcl::fromROSMsg(pc_input,pc_inp);*/
 
         // euclidean clustering
-        double tolerance = 0.02;        //def: 0.02
+        double tolerance = 0.04;        //def: 0.02
         double minSize = 25;            //def: 5
         double maxSize = 10000;
         typename pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>);
@@ -283,6 +283,18 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
             for (int obj_ind=0; obj_ind<objects.size(); obj_ind++){
                 if(objects[obj_ind].disappeared == true){
                     //occluder'ının ellipsoid'ini inherit etmeli
+                    continue;
+                }
+                else if(objects[obj_ind].occluded == true){
+                    /*CloudPtr cldptr = objects[obj_ind].cloud;
+                    cldptr->points.size();
+                    for(int ii=0; ii<cldptr->points.size(); ii++){
+                        PointT point = cldptr->points[ii];
+                        point.r = r[objects[obj_ind].id];
+                        point.g = g[objects[obj_ind].id];
+                        point.b = b[objects[obj_ind].id];
+                        pc_output->points.push_back(point);
+                    }*/
                     continue;
                 }
                 double max_compatibility = 0;
@@ -416,6 +428,17 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
                             pc_output->points.push_back(point);
                         }
                     }
+                    //Occluder list update
+                    /*else{
+                        if(objects.size()==2){
+                            objects[objID].occluders.push_back(1-objID);
+                        }
+                        else{
+                            for(int j=0; j<objects.size(); j++){
+
+                            }
+                        }
+                    }*/
                     //visualizeObjectCenter(pc_output, objects[associations[id][0]].e.center);
                 }
                 else{
@@ -468,6 +491,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
                 for(int ii=0; ii<associations[id].size(); ii++){
                     visualizeObjectCenter(pc_output, objects[associations[id][ii]].e.center);
                 }
+                //Increment blob id
                 id++;
             }
         }
@@ -481,8 +505,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output)
             cout << "Bhatt " << k << " and " << l << " = " << Object::bhattacharyyaCoeff(objects[k].GMM, objects[l].GMM, 1) << endl;
         }
     }*/
-
-
 
 
     //myfile.close();

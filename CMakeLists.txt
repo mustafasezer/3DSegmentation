@@ -32,4 +32,3 @@ ADD_EXECUTABLE  (pcs_visualizer ${project_SOURCES}
                                 ${project_HEADERS_MOC})
 
 TARGET_LINK_LIBRARIES (pcs_visualizer ${QT_LIBRARIES} ${PCL_LIBRARIES} ${VTK_LIBRARIES} ${OpenCV_LIBS})
-

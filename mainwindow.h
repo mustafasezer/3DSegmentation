@@ -41,7 +41,7 @@ private:
 
 private:
     Ui::MainWindow *ui;
-    PCLViewer *pclViewer_raw, *pclViewer_result, *pclViewer_gt;
+    PCLViewer *pclViewer_raw, *pclViewer_result, *pclViewer_result2, *pclViewer_result3, *pclViewer_gt;
     PCS *pcs_raw, *pcs_result, *pcs_result2, *pcs_result3, *pcs_gt;
 
     QString currentDirectory;

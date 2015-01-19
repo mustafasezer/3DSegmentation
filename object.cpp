@@ -49,10 +49,11 @@ Object::Object(int id_, Cloud *cld, pcl::PointIndices ind)
 {
     id = id_;
     //cloud = cld;
-    GMM = cv::EM(5, cv::EM::COV_MAT_DIAGONAL);
+    GMM = cv::EM(7, cv::EM::COV_MAT_DIAGONAL);
     disappeared = false;
     maxVolume = 0;
 
+    updatePosition(cld, ind);
     updateAppearance(cld, ind);
 
     //cv::eigen2cv(normCov, e.normCov);
@@ -129,7 +130,7 @@ double Object::pixelCompatibility(cv::Mat point){
     return compatibility[0];
 }
 
-bool Object::updateAppearance(Cloud *cld, pcl::PointIndices ind){
+bool Object::updatePosition(Cloud *cld, pcl::PointIndices ind){
     int i=0;
 
     Eigen::Vector4f xyz_centroid;
@@ -147,13 +148,78 @@ bool Object::updateAppearance(Cloud *cld, pcl::PointIndices ind){
     if(e.volume > maxVolume){
         maxVolume = e.volume;
     }
-    occlusionRatio = e.volume/maxVolume;
-    if(occlusionRatio < 0.15){
+    occlusionRatio = 1-(e.volume/maxVolume);
+    if(occlusionRatio > 0.65){
         occluded = true;
+        disappeared = true;
+        std::cout << "Object " << id << " is disappeared!" << std::endl;
+    }
+    else if(occlusionRatio > 0.3){
+        occluded = true;
+        disappeared = false;
+        std::cout << "Object " << id << " is occluded!" << std::endl;
     }
     else{
         occluded = false;
+        disappeared = false;
     }
+
+    /*cv::Mat samples(ind.indices.size(), 2, CV_64FC1);
+    for (std::vector<int>::const_iterator pit = ind.indices.begin (); pit != ind.indices.end (); pit++){
+        cv::Mat point = rgb2UV(cld->points[*pit]);
+        samples.at<double>(i,0) = point.at<double>(0,0);
+        samples.at<double>(i,1) = point.at<double>(0,1);
+        i++;
+    }
+    if(GMM.isTrained()){
+        return GMM.trainE(samples, GMM.getMat("means"), GMM.getMatVector("covs"), GMM.getMat("weights"));
+    }
+    else{
+        return GMM.train(samples);
+    }*/
+    //For control purposes
+    /*if(GMM.train(samples)){
+        cv::Mat p(1, 2, CV_64FC1);
+        p.at<double>(0,0) = samples.at<double>(0,0);
+        p.at<double>(0,1) = samples.at<double>(0,1);
+        double dummy = pixelCompatibility(p);
+        cout << dummy << endl;
+    }*/
+}
+
+bool Object::updateAppearance(Cloud *cld, pcl::PointIndices ind){
+    int i=0;
+
+    /*Eigen::Vector4f xyz_centroid;
+    computeMeanAndCovarianceMatrix(*cld, ind, e.cov, xyz_centroid);
+    pcl::eigen33(e.cov, e.evec, e.eval);
+    e.axes = K * Eigen::Vector3f(sqrt(e.eval(0)), sqrt(e.eval(1)), sqrt(e.eval(2)));
+    e.center = Eigen::Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
+    e.volume = e.axes.prod() * M_PI * 4/3;
+    e.normCov = Eigen::Matrix<float, 3, 3>::Identity();
+    for(int i=0; i<3; i++){
+        e.normCov(i,i) = 1/e.axes[i];
+    }
+    e.normCov = e.evec * e.normCov;
+
+    if(e.volume > maxVolume){
+        maxVolume = e.volume;
+    }
+    occlusionRatio = 1-(e.volume/maxVolume);
+    if(occlusionRatio > 0.65){
+        occluded = true;
+        disappeared = true;
+        std::cout << "Object " << id << " is disappeared!" << std::endl;
+    }
+    else if(occlusionRatio > 0.3){
+        occluded = true;
+        disappeared = false;
+        std::cout << "Object " << id << " is occluded!" << std::endl;
+    }
+    else{
+        occluded = false;
+        disappeared = false;
+    }*/
 
     cv::Mat samples(ind.indices.size(), 2, CV_64FC1);
     for (std::vector<int>::const_iterator pit = ind.indices.begin (); pit != ind.indices.end (); pit++){
