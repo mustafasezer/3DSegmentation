@@ -14,6 +14,8 @@ MainWindow::MainWindow(QWidget *parent) :
     isLoaded_gt = 0;
     isLoaded_raw = 0;
     isLoaded_result = 0;
+    isLoaded_result2 = 0;
+    isLoaded_result3 = 0;
 
 }
 
@@ -94,6 +96,8 @@ void MainWindow::on_horizontalSlider_valueChanged(int value)
     if(isLoaded_raw)    pclViewer_raw->showPCat(value);
     if(isLoaded_gt)    pclViewer_gt->showPCat(value);
     if(isLoaded_result)    pclViewer_result->showPCat(value);
+    if(isLoaded_result2)    pclViewer_result2->showPCat(value);
+    if(isLoaded_result3)    pclViewer_result3->showPCat(value);
     time = value;
     ui->lineEdit_time->setText(QString::number(value));
 }
@@ -114,6 +118,7 @@ void MainWindow::on_pushButton_start_clicked()
 void MainWindow::update()
 {
     time ++;
+    time += ui->downsample->text().toInt()-1;
     ui->horizontalSlider->setValue(time);
 }
 
@@ -129,11 +134,12 @@ void MainWindow::on_pushButton_process1_clicked()
     pcs_result = new PCS();
     PCSSegmentation seg;
     int maxTime = ui->convertUntil->text().toInt();
+    int downsample = ui->downsample->text().toInt();
     if(maxTime>pcs_raw->nTime || maxTime<0){
         maxTime = pcs_raw->nTime;
     }
-    ui->horizontalSlider->setMaximum(maxTime-1);
-    seg.segmentation(pcs_raw, pcs_result, maxTime);
+    ui->horizontalSlider->setMaximum((maxTime-1)/downsample);
+    seg.segmentation(pcs_raw, pcs_result, maxTime, downsample);
     pclViewer_result = new PCLViewer();
     pclViewer_result->setPCS(pcs_result);
     pclViewer_result->setWindowTitle("PCS processing result data");
@@ -154,7 +160,7 @@ void MainWindow::on_pushButton_process1_2_clicked()
     pclViewer_result2->setWindowTitle("PCS processing result data");
     pclViewer_result2->setGeometry(382+0,600,700,500);
     pclViewer_result2->show();
-    isLoaded_result = 1;
+    isLoaded_result2 = 1;
 }
 
 void MainWindow::on_pushButton_process1_3_clicked()
@@ -168,5 +174,5 @@ void MainWindow::on_pushButton_process1_3_clicked()
     pclViewer_result3->setWindowTitle("PCS processing result data");
     pclViewer_result3->setGeometry(382+0,600,700,500);
     pclViewer_result3->show();
-    isLoaded_result = 1;
+    isLoaded_result3 = 1;
 }

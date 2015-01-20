@@ -45,7 +45,7 @@ private:
     PCS *pcs_raw, *pcs_result, *pcs_result2, *pcs_result3, *pcs_gt;
 
     QString currentDirectory;
-    bool isLoaded_raw, isLoaded_gt, isLoaded_result;
+    bool isLoaded_raw, isLoaded_gt, isLoaded_result, isLoaded_result2, isLoaded_result3;
     QTimer *timer;
     int time;
     int ms;

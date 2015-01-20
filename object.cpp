@@ -52,6 +52,7 @@ Object::Object(int id_, Cloud *cld, pcl::PointIndices ind)
     GMM = cv::EM(7, cv::EM::COV_MAT_DIAGONAL);
     disappeared = false;
     maxVolume = 0;
+    ellipsoid_history_size = 10;
 
     updatePosition(cld, ind);
     updateAppearance(cld, ind);
@@ -122,6 +123,16 @@ double Object::distance(PointT p){
     return Eigen::Vector3f(e.normCov * (pt-e.center)).norm();
 }
 
+double Object::distance(PointT p, ellipsoid ell){
+    Eigen::Vector3f pt(p.x, p.y, p.z);
+    return Eigen::Vector3f(ell.normCov * (pt-ell.center)).norm();
+}
+
+double Object::distance_history(PointT p, int history_index){
+    Eigen::Vector3f pt(p.x, p.y, p.z);
+    return Eigen::Vector3f(ell_vec[history_index].normCov * (pt-ell_vec[history_index].center)).norm();
+}
+
 double Object::pixelCompatibility(cv::Mat point){
     //cv::Mat weights(GMM.getMat("weights"));
     cv::Mat probs(1, GMM.getInt("nclusters"), CV_64FC1);
@@ -131,7 +142,6 @@ double Object::pixelCompatibility(cv::Mat point){
 }
 
 bool Object::updatePosition(Cloud *cld, pcl::PointIndices ind){
-    int i=0;
 
     ellipsoid ell;
 
@@ -147,11 +157,22 @@ bool Object::updatePosition(Cloud *cld, pcl::PointIndices ind){
     }
     ell.normCov = ell.evec * ell.normCov;
 
+    //TODO History to remove
+    //Insert the ellipsoid to the ellipsoid vector
+    ell_vec.insert(ell_vec.begin(), ell);
+    if(ell_vec.size()>ellipsoid_history_size){
+        ell_vec.pop_back();
+    }
+
     if(ell.volume > maxVolume){
         maxVolume = ell.volume;
-        e = ell;
+        e_max = ell;
+        e_max_shifted = e_max;
     }
-    occlusionRatio = 1-(e.volume/maxVolume);
+    e_max_shifted.center = ell.center;
+    e = ell;
+
+    occlusionRatio = 1-(ell.volume/maxVolume);
     if(occlusionRatio > 0.65){
         occluded = true;
         disappeared = true;
@@ -191,7 +212,6 @@ bool Object::updatePosition(Cloud *cld, pcl::PointIndices ind){
 }
 
 bool Object::updateAppearance(Cloud *cld, pcl::PointIndices ind){
-    int i=0;
 
     /*Eigen::Vector4f xyz_centroid;
     computeMeanAndCovarianceMatrix(*cld, ind, e.cov, xyz_centroid);
@@ -225,6 +245,8 @@ bool Object::updateAppearance(Cloud *cld, pcl::PointIndices ind){
     }*/
 
     //updatePosition(cld, ind);
+
+    int i=0;
 
     cv::Mat samples(ind.indices.size(), 2, CV_64FC1);
     for (std::vector<int>::const_iterator pit = ind.indices.begin (); pit != ind.indices.end (); pit++){

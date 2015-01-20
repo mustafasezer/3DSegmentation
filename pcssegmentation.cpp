@@ -151,7 +151,7 @@ void PCSSegmentation::visualizeObjectCenter(CloudPtr obj_cloud, Eigen::Vector3f 
 }
 
 
-void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
+void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int downsample)
 {
     objects.clear();
     struct timespec t1, t2;
@@ -164,6 +164,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
     //myfile.open ("/home/mustafasezer/Desktop/coord.txt");
 
     for(int t=0;t<maxTime;t++){
+        cout << "t = " << t << "   ******************************"<< endl;
         CloudPtr pc_input = input->pcs.at(t);
         CloudPtr pc_output;
         pc_output.reset(new Cloud);
@@ -272,7 +273,9 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                 id++;
                 //}
                 visualizeObjectCenter(pc_output, obj.e.center);
-                showObject(0, pc_input, pc_output);
+            }
+            for(int j=0; j<objects.size(); j++){
+                showObject(j, pc_input, pc_output);
             }
         }
         else{
@@ -286,9 +289,10 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
             //For all objects
             for (int obj_ind=0; obj_ind<objects.size(); obj_ind++){
                 objects[obj_ind].pointIndices.clear();
+                objects[obj_ind].blobs.clear();
                 if(objects[obj_ind].disappeared == true){
                     //occluder'ının ellipsoid'ini inherit etmeli
-                    continue;
+                    //continue;
                 }
                 else if(objects[obj_ind].occluded == true){
                     /*CloudPtr cldptr = objects[obj_ind].cloud;
@@ -300,7 +304,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                         point.b = b[objects[obj_ind].id];
                         pc_output->points.push_back(point);
                     }*/
-                    continue;
+                    //continue;
                 }
                 double max_compatibility = 0;
                 //For all blobs
@@ -316,14 +320,28 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                         PointT point = pc_input->points[*pit];
 
-                        if(objects[obj_ind].distance(point) <= 1){
+                        if(objects[obj_ind].distance(point) <= 1 || objects[obj_ind].distance(point, objects[obj_ind].e_max) <= 1){
                             sum_compatibility += objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
                         }
+                        /*for(int j=0; j<objects[obj_ind].ellipsoid_history_size; j++){
+                            if(objects[obj_ind].distance(point) <= 1){
+                                sum_compatibility_history[j] +=  objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
+                            }
+                        }*/
                     }
                     if(sum_compatibility > max_compatibility){
                         max_compatibility = sum_compatibility;
                         objects[obj_ind].blobID = id;
                     }
+                    else if(sum_compatibility > 0){
+                        objects[obj_ind].blobs.push_back(id);
+                    }
+                    /*for(int j=0; j<objects[obj_ind].ellipsoid_history_size; j++){
+                        if(sum_compatibility > max_compatibility){
+                            max_compatibility = sum_compatibility;
+                            objects[obj_ind].blobID = id;
+                        }
+                    }*/
                     id++;
                 }
                 //If object is associated with no blob --> object disappeared, Case 1b
@@ -333,8 +351,25 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                     objects[obj_ind].disappeared = true;
                 }
                 else{
+                    std::cout << "Blob " << objects[obj_ind].blobID << " with object " << obj_ind << std::endl;
                     associations[objects[obj_ind].blobID].push_back(obj_ind);
+
+                    for(int j=0; j<objects[obj_ind].blobs.size(); j++){
+                        std::cout << "Blob " << objects[obj_ind].blobs[j] << " with object " << obj_ind << std::endl;
+                        associations[objects[obj_ind].blobs[j]].push_back(obj_ind);
+                    }
+
                 }
+
+                /*for(int j=0; j<objects[obj_ind].ellipsoid_history_size; j++){
+                    if(max_compatibility_history[j]==0){
+                        //objects[obj_ind].disappeared = true;
+                    }
+                    else{
+                        associations[objects[obj_ind].blobID].push_back(obj_ind);
+                    }
+                }*/
+
             }
 
             //TODO for all blobs
@@ -382,8 +417,10 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                     //}
                     //visualizeObjectCenter(pc_output, obj.e.center);
                 }
-                else if(associations[id].size() == 1){
+                else if(associations[id].size() == 1 && objects[associations[id][0]].blobs.size()==0){
                     //One to one
+
+                    std::cout << "Blob " << id << " 1-to-1 with object " << associations[id][0] << std::endl;
 
                     /*Eigen::Vector4f xyz_centroid;
                     //pcl::compute3DCentroid (incloud, *it, xyz_centroid);
@@ -399,6 +436,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                     //Update object
                     objects[associations[id][0]].updateObject(associations[id][0], center, covariance_matrix, eigen_values, eigen_vectors, axes);*/
                     int objID = associations[id][0];
+                    objects[objID].pointIndices = it->indices;
                     if(objects[objID].occluded == false){
                         if(objects[objID].updateAppearance(&incloud, *it)){
                             objects[objID].blobID = id;
@@ -417,10 +455,60 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                             std::cout << "ERROR: Object appearance could not be updated\n";
                         }
                         //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
+                    }
+                    //Occluder list update
+                    /*else{
+                        if(objects.size()==2){
+                            objects[objID].occluders.push_back(1-objID);
+                        }
+                        else{
+                            for(int j=0; j<objects.size(); j++){
+
+                            }
+                        }
+                    }*/
+                    //visualizeObjectCenter(pc_output, objects[associations[id][0]].e.center);
+                }
+                //NEW CASE WITH AN OBJECT WITH MULTIPLE BLOBS
+                else if(associations[id].size() == 1 && objects[associations[id][0]].blobs.size()>0){
+                    //One to one NEW CASE WITH AN OBJECT WITH MULTIPLE BLOBS
+
+                    std::cout << "Blob " << id << " is part of object " << associations[id][0] << std::endl;
+
+                    int objID = associations[id][0];
+                    //Concatenate the blob's indices to the object
+                    std::vector<int> AB;
+                    AB.reserve( objects[objID].pointIndices.size() + it->indices.size() ); // preallocate memory
+                    AB.insert(AB.end(), objects[objID].pointIndices.begin(), objects[objID].pointIndices.end());
+                    AB.insert(AB.end(), it->indices.begin(), it->indices.end());
+                    objects[objID].pointIndices.clear();
+                    objects[objID].pointIndices = AB;
+                    //TODO: DONT UPDATE UNTIL ALL INDICES ARE CONCATENATED
+
+                    //Update object
+//                    int objID = associations[id][0];
+//                    if(objects[objID].occluded == false){
+//                        if(objects[objID].updateAppearance(&incloud, *it)){
+//                            objects[objID].blobID = id;
+
+                            //TODO The following push back is removed CHECK CHECK CHECK!!!
+                            //associations[id].push_back(objects[associations[id][0]].id);
+
+                            /*cout << "Object updated at t:" << t << " Center:";
+                        for(int ii=0; ii<3; ii++){
+                            std::cout << " ";
+                            std::cout << objects[associations[id][0]].e.center[ii];
+                        }
+                        std::cout << std::endl;*/
+//                        }
+//                        else{
+//                            std::cout << "ERROR: Object appearance could not be updated\n";
+//                        }
+                        //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
 
                         //objects[objID].pointIndices.clear();
-                        objects[objID].pointIndices = it->indices;
-                    }
+//                        objects[objID].pointIndices = it->indices;
+//                    }
                     //Occluder list update
                     /*else{
                         if(objects.size()==2){
@@ -466,7 +554,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                                 double relation = objects[associations[id][j]].pixelRelation(point);
                                 if(relation > maxRelation){
                                     maxRelation = relation;
-                                    objID = j;
+                                    objID = associations[id][j];
                                 }
                             }
                             objects[objID].pointIndices.push_back(*pit);
@@ -484,17 +572,26 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime)
                 for(int ii=0; ii<associations[id].size(); ii++){
                     visualizeObjectCenter(pc_output, objects[associations[id][ii]].e.center);
                 }
-
-                for(int j=0; j<objects.size(); j++){
-                    showObject(j, pc_input, pc_output);
-                }
-
                 //Increment blob id
                 id++;
+            }
+
+            for(int j=0; j<objects.size(); j++){
+                showObject(j, pc_input, pc_output);
+            }
+
+            //THIS UPDATE CAUSES IN OCCLUSION CASE!!!
+            for(int j=0; j<objects.size(); j++){
+                if(objects[j].pointIndices.size()==0)
+                    continue;
+                pcl::PointIndices ptInd;
+                ptInd.indices = objects[j].pointIndices;
+                objects[j].updatePosition(&incloud, ptInd);
             }
         }
 
         output->pcs.push_back(pc_output);
+        t += downsample-1;
     }
 
 

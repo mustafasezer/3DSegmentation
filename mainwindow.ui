@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>382</width>
-    <height>332</height>
+    <height>355</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -127,10 +127,13 @@
        <property name="geometry">
         <rect>
          <x>100</x>
-         <y>60</y>
+         <y>70</y>
          <width>81</width>
          <height>27</height>
         </rect>
+       </property>
+       <property name="text">
+        <string/>
        </property>
       </widget>
       <widget class="QLabel" name="label">
@@ -144,6 +147,32 @@
        </property>
        <property name="text">
         <string>Convert Until</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="downsample">
+       <property name="geometry">
+        <rect>
+         <x>100</x>
+         <y>100</y>
+         <width>31</width>
+         <height>27</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>1</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_2">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>100</y>
+         <width>91</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Downsample</string>
        </property>
       </widget>
      </widget>
