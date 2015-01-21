@@ -53,6 +53,7 @@ Object::Object(int id_, Cloud *cld, pcl::PointIndices ind)
     disappeared = false;
     maxVolume = 0;
     ellipsoid_history_size = 10;
+    is1to1 = true;
 
     updatePosition(cld, ind);
     updateAppearance(cld, ind);
@@ -115,7 +116,7 @@ double Object::bhattacharyyaCoeff(cv::EM gmm1, cv::EM gmm2, int formula){
 }
 
 double Object::pixelRelation(PointT p){
-    return pixelCompatibility(rgb2UV(p))/distance(p);
+    return pixelCompatibility(rgb2UV(p))/(pow(distance(p), 3));
 }
 
 double Object::distance(PointT p){
@@ -188,6 +189,8 @@ bool Object::updatePosition(Cloud *cld, pcl::PointIndices ind){
         disappeared = false;
     }
 
+    return true;
+
     /*cv::Mat samples(ind.indices.size(), 2, CV_64FC1);
     for (std::vector<int>::const_iterator pit = ind.indices.begin (); pit != ind.indices.end (); pit++){
         cv::Mat point = rgb2UV(cld->points[*pit]);
@@ -209,6 +212,15 @@ bool Object::updatePosition(Cloud *cld, pcl::PointIndices ind){
         double dummy = pixelCompatibility(p);
         cout << dummy << endl;
     }*/
+}
+
+bool Object::updateEllipsePosition(Cloud *cld, pcl::PointIndices ind){
+    Eigen::Vector4f xyz_centroid;
+    ellipsoid ell;
+    computeMeanAndCovarianceMatrix(*cld, ind, ell.cov, xyz_centroid);
+    //compute3DCentroid(*cld, ind, xyz_centroid);
+    e.center = Eigen::Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
+    return true;
 }
 
 bool Object::updateAppearance(Cloud *cld, pcl::PointIndices ind){

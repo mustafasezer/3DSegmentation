@@ -307,6 +307,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     //continue;
                 }
                 double max_compatibility = 0;
+                double max_compatibility_emax = 0;
                 //For all blobs
                 int id = 0;
                 for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
@@ -317,12 +318,23 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     }
                     //Find points of intersection and calculate compatibility
                     double sum_compatibility = 0;
+                    double sum_compatibility_emax = 0;
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                         PointT point = pc_input->points[*pit];
 
-                        if(objects[obj_ind].distance(point) <= 1 || objects[obj_ind].distance(point, objects[obj_ind].e_max) <= 1){
+                        /*if(objects[obj_ind].distance(point) <= 1 || objects[obj_ind].distance(point, objects[obj_ind].e_max) <= 1){
+                            sum_compatibility += objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
+                        }*/
+
+                        if(objects[obj_ind].distance(point) <= 1){
                             sum_compatibility += objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
                         }
+                        else if(objects[obj_ind].distance(point, objects[obj_ind].e_max) <= 1){
+                            sum_compatibility_emax += objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
+                        }
+
+
+
                         /*for(int j=0; j<objects[obj_ind].ellipsoid_history_size; j++){
                             if(objects[obj_ind].distance(point) <= 1){
                                 sum_compatibility_history[j] +=  objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
@@ -333,7 +345,10 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                         max_compatibility = sum_compatibility;
                         objects[obj_ind].blobID = id;
                     }
-                    else if(sum_compatibility > 0){
+                    //sum_compatibility_emax>0 for more than 2 fractions, sum_compatibility_emax>max_compatibility_emax can only find two fractions of object
+                    //and this is due to vector push back. Otherwise it would only take the best matching blob as a part of object
+                    else if(sum_compatibility_emax > 0){
+                        max_compatibility_emax = sum_compatibility_emax;
                         objects[obj_ind].blobs.push_back(id);
                     }
                     /*for(int j=0; j<objects[obj_ind].ellipsoid_history_size; j++){
@@ -351,11 +366,9 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     objects[obj_ind].disappeared = true;
                 }
                 else{
-                    std::cout << "Blob " << objects[obj_ind].blobID << " with object " << obj_ind << std::endl;
                     associations[objects[obj_ind].blobID].push_back(obj_ind);
 
                     for(int j=0; j<objects[obj_ind].blobs.size(); j++){
-                        std::cout << "Blob " << objects[obj_ind].blobs[j] << " with object " << obj_ind << std::endl;
                         associations[objects[obj_ind].blobs[j]].push_back(obj_ind);
                     }
 
@@ -437,6 +450,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     objects[associations[id][0]].updateObject(associations[id][0], center, covariance_matrix, eigen_values, eigen_vectors, axes);*/
                     int objID = associations[id][0];
                     objects[objID].pointIndices = it->indices;
+                    objects[objID].is1to1 = true;
                     if(objects[objID].occluded == false){
                         if(objects[objID].updateAppearance(&incloud, *it)){
                             objects[objID].blobID = id;
@@ -476,6 +490,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     std::cout << "Blob " << id << " is part of object " << associations[id][0] << std::endl;
 
                     int objID = associations[id][0];
+                    objects[objID].is1to1 = true;
                     //Concatenate the blob's indices to the object
                     std::vector<int> AB;
                     AB.reserve( objects[objID].pointIndices.size() + it->indices.size() ); // preallocate memory
@@ -486,29 +501,29 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     //TODO: DONT UPDATE UNTIL ALL INDICES ARE CONCATENATED
 
                     //Update object
-//                    int objID = associations[id][0];
-//                    if(objects[objID].occluded == false){
-//                        if(objects[objID].updateAppearance(&incloud, *it)){
-//                            objects[objID].blobID = id;
+                    //                    int objID = associations[id][0];
+                    //                    if(objects[objID].occluded == false){
+                    //                        if(objects[objID].updateAppearance(&incloud, *it)){
+                    //                            objects[objID].blobID = id;
 
-                            //TODO The following push back is removed CHECK CHECK CHECK!!!
-                            //associations[id].push_back(objects[associations[id][0]].id);
+                    //TODO The following push back is removed CHECK CHECK CHECK!!!
+                    //associations[id].push_back(objects[associations[id][0]].id);
 
-                            /*cout << "Object updated at t:" << t << " Center:";
+                    /*cout << "Object updated at t:" << t << " Center:";
                         for(int ii=0; ii<3; ii++){
                             std::cout << " ";
                             std::cout << objects[associations[id][0]].e.center[ii];
                         }
                         std::cout << std::endl;*/
-//                        }
-//                        else{
-//                            std::cout << "ERROR: Object appearance could not be updated\n";
-//                        }
-                        //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
+                    //                        }
+                    //                        else{
+                    //                            std::cout << "ERROR: Object appearance could not be updated\n";
+                    //                        }
+                    //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
 
-                        //objects[objID].pointIndices.clear();
-//                        objects[objID].pointIndices = it->indices;
-//                    }
+                    //objects[objID].pointIndices.clear();
+                    //                        objects[objID].pointIndices = it->indices;
+                    //                    }
                     //Occluder list update
                     /*else{
                         if(objects.size()==2){
@@ -540,14 +555,14 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     }
                     cout << " Max Bhat Coeff = " << maxBhattCoeff << std::endl;
 
-                    /*for(int j=0; j<associations[id].size(); j++){
-                        objects[associations[id][j]].pointIndices.clear();
-                    }*/
+                    for(int j=0; j<associations[id].size(); j++){
+                        objects[associations[id][j]].is1to1 = false;
+                    }
 
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
                         PointT point = pc_input->points[*pit];
 
-                        if(maxBhattCoeff<0.99){
+                        if(maxBhattCoeff<0.95){
                             double maxRelation = 0;
                             int objID;
                             for(int j=0; j<associations[id].size(); j++){
@@ -560,11 +575,16 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                             objects[objID].pointIndices.push_back(*pit);
                         }
                         else{
-                            //A pixel is associated with several objects
-                            point.r = 255;
-                            point.g = 255;
-                            point.b = 255;
-                            pc_output->points.push_back(point);
+                            double minDistance = 100000000;
+                            int objID;
+                            for(int j=0; j<associations[id].size(); j++){
+                                double distance = objects[associations[id][j]].distance(point);
+                                if(distance < minDistance){
+                                    minDistance = distance;
+                                    objID = associations[id][j];
+                                }
+                            }
+                            objects[objID].pointIndices.push_back(*pit);
                         }
                     }
                 }
@@ -580,13 +600,17 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                 showObject(j, pc_input, pc_output);
             }
 
-            //THIS UPDATE CAUSES IN OCCLUSION CASE!!!
             for(int j=0; j<objects.size(); j++){
                 if(objects[j].pointIndices.size()==0)
                     continue;
                 pcl::PointIndices ptInd;
                 ptInd.indices = objects[j].pointIndices;
-                objects[j].updatePosition(&incloud, ptInd);
+                if(objects[j].is1to1){
+                    objects[j].updatePosition(&incloud, ptInd);
+                }
+                else{
+                    objects[j].updateEllipsePosition(&incloud, ptInd);
+                }
             }
         }
 
