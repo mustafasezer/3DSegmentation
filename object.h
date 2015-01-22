@@ -63,6 +63,8 @@ public:
     bool disappeared;
     bool is1to1;
     bool occluded;
+    bool divided;
+    bool false_positive;
 
     CloudPtr cloud;
     std::vector<int> pointIndices;

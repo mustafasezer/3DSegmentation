@@ -54,6 +54,8 @@ Object::Object(int id_, Cloud *cld, pcl::PointIndices ind)
     maxVolume = 0;
     ellipsoid_history_size = 10;
     is1to1 = true;
+    divided = false;
+    false_positive = false;
 
     updatePosition(cld, ind);
     updateAppearance(cld, ind);
@@ -216,9 +218,9 @@ bool Object::updatePosition(Cloud *cld, pcl::PointIndices ind){
 
 bool Object::updateEllipsePosition(Cloud *cld, pcl::PointIndices ind){
     Eigen::Vector4f xyz_centroid;
-    ellipsoid ell;
-    computeMeanAndCovarianceMatrix(*cld, ind, ell.cov, xyz_centroid);
-    //compute3DCentroid(*cld, ind, xyz_centroid);
+    //ellipsoid ell;
+    //computeMeanAndCovarianceMatrix(*cld, ind, ell.cov, xyz_centroid);
+    compute3DCentroid(*cld, ind, xyz_centroid);
     e.center = Eigen::Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
     return true;
 }

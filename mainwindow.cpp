@@ -142,7 +142,7 @@ void MainWindow::on_pushButton_process1_clicked()
     seg.segmentation(pcs_raw, pcs_result, maxTime, downsample);
     pclViewer_result = new PCLViewer();
     pclViewer_result->setPCS(pcs_result);
-    pclViewer_result->setWindowTitle("PCS processing result data");
+    pclViewer_result->setWindowTitle("PCS Processing Result Data");
     pclViewer_result->setGeometry(382+0,600,700,500);
     pclViewer_result->show();
     isLoaded_result = 1;
@@ -157,7 +157,7 @@ void MainWindow::on_pushButton_process1_2_clicked()
     seg.segmentationRegionGrow(pcs_raw, pcs_result2);
     pclViewer_result2 = new PCLViewer();
     pclViewer_result2->setPCS(pcs_result2);
-    pclViewer_result2->setWindowTitle("PCS processing result data");
+    pclViewer_result2->setWindowTitle("Region Growing Based Clustering");
     pclViewer_result2->setGeometry(382+0,600,700,500);
     pclViewer_result2->show();
     isLoaded_result2 = 1;
@@ -171,7 +171,7 @@ void MainWindow::on_pushButton_process1_3_clicked()
     seg.segmentationEuclidian(pcs_raw, pcs_result3);
     pclViewer_result3 = new PCLViewer();
     pclViewer_result3->setPCS(pcs_result3);
-    pclViewer_result3->setWindowTitle("PCS processing result data");
+    pclViewer_result3->setWindowTitle("Euclidian Clustering Result Data");
     pclViewer_result3->setGeometry(382+0,600,700,500);
     pclViewer_result3->show();
     isLoaded_result3 = 1;

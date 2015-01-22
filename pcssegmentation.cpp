@@ -288,6 +288,9 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
 
             //For all objects
             for (int obj_ind=0; obj_ind<objects.size(); obj_ind++){
+                if(objects[obj_ind].false_positive == true){
+                    continue;
+                }
                 objects[obj_ind].pointIndices.clear();
                 objects[obj_ind].blobs.clear();
                 if(objects[obj_ind].disappeared == true){
@@ -451,6 +454,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     int objID = associations[id][0];
                     objects[objID].pointIndices = it->indices;
                     objects[objID].is1to1 = true;
+                    objects[objID].divided = false;
                     if(objects[objID].occluded == false){
                         if(objects[objID].updateAppearance(&incloud, *it)){
                             objects[objID].blobID = id;
@@ -491,6 +495,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
 
                     int objID = associations[id][0];
                     objects[objID].is1to1 = true;
+                    objects[objID].divided = true;
                     //Concatenate the blob's indices to the object
                     std::vector<int> AB;
                     AB.reserve( objects[objID].pointIndices.size() + it->indices.size() ); // preallocate memory
@@ -557,6 +562,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
 
                     for(int j=0; j<associations[id].size(); j++){
                         objects[associations[id][j]].is1to1 = false;
+                        objects[associations[id][j]].divided = false;
                     }
 
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++){
@@ -596,7 +602,39 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                 id++;
             }
 
+
+            //False positive check
+            for(int j=0; j<objects.size()-1; j++){
+                for(int k=j+1; k<objects.size(); k++){
+                    int l;
+                    for(l=0; l<objects[k].pointIndices.size(); l++){
+                        PointT point = pc_input->points[l];
+                        if(objects[j].distance(point, objects[j].e_max)>1){
+                            break;
+                        }
+                    }
+                    if(l==objects[k].pointIndices.size() && l>0){
+                        std::cout << "Object " << k << " is totally in object " << j << std::endl;
+                        std::cout << "Size: " << objects[j].pointIndices.size() << " --> ";
+                        objects[k].false_positive = true;
+                        std::vector<int> AB;
+                        AB.reserve( objects[j].pointIndices.size() + objects[k].pointIndices.size() ); // preallocate memory
+                        AB.insert(AB.end(), objects[j].pointIndices.begin(), objects[j].pointIndices.end());
+                        AB.insert(AB.end(), objects[k].pointIndices.begin(), objects[k].pointIndices.end());
+                        objects[k].pointIndices.clear();
+                        //objects[k].e.axes =  Eigen::Vector3f(0.0000000001, 0.0000000001, 0.0000000001);
+                        objects[j].pointIndices.clear();
+                        objects[j].pointIndices = AB;
+                        std::cout << objects[j].pointIndices.size() << std::endl;
+                    }
+                }
+            }
+
+
             for(int j=0; j<objects.size(); j++){
+                if(objects[j].false_positive){
+                    continue;
+                }
                 showObject(j, pc_input, pc_output);
             }
 
@@ -605,7 +643,7 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     continue;
                 pcl::PointIndices ptInd;
                 ptInd.indices = objects[j].pointIndices;
-                if(objects[j].is1to1){
+                if(objects[j].is1to1 || objects[j].divided){
                     objects[j].updatePosition(&incloud, ptInd);
                 }
                 else{
