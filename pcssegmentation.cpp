@@ -455,7 +455,8 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     objects[objID].pointIndices = it->indices;
                     objects[objID].is1to1 = true;
                     objects[objID].divided = false;
-                    if(objects[objID].occluded == false){
+                    //if(objects[objID].occluded == false){
+                    if(objects[objID].e.volume >= objects[objID].e_max.volume){
                         if(objects[objID].updateAppearance(&incloud, *it)){
                             objects[objID].blobID = id;
 
@@ -607,13 +608,18 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
             for(int j=0; j<objects.size()-1; j++){
                 for(int k=j+1; k<objects.size(); k++){
                     int l;
+                    int counter = 0;
                     for(l=0; l<objects[k].pointIndices.size(); l++){
                         PointT point = pc_input->points[l];
                         if(objects[j].distance(point, objects[j].e_max)>1){
                             break;
                         }
+                        //if(objects[j].distance(point, objects[j].e_max)<=1){
+                        //    counter++;
+                        //}
                     }
                     if(l==objects[k].pointIndices.size() && l>0){
+                    //if(counter/100 >=objects[k].pointIndices.size()*50 && l>0){
                         std::cout << "Object " << k << " is totally in object " << j << std::endl;
                         std::cout << "Size: " << objects[j].pointIndices.size() << " --> ";
                         objects[k].false_positive = true;
