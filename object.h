@@ -47,6 +47,7 @@ public:
     double pixelCompatibility(cv::Mat point);
     double distance(PointT p);
     double distance(PointT p, ellipsoid ell);
+    //double distance_cubed(PointT p);
     double distance_history(PointT p, int history_index);
     double pixelRelation(PointT p);
     int id;

@@ -160,8 +160,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
     clock_gettime(CLOCK_MONOTONIC,  &t1);
 
     cout<<"nT: "<<input->nTime<<" max Time: " <<maxTime<<endl;
-    //ofstream myfile;
-    //myfile.open ("/home/mustafasezer/Desktop/coord.txt");
 
     for(int t=0;t<maxTime;t++){
         cout << "t = " << t << "   ******************************"<< endl;
@@ -219,35 +217,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
             int id = 0;
             for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
             {
-                /*//if(t==12){
-                Eigen::Vector4f xyz_centroid;
-                //pcl::compute3DCentroid (incloud, *it, xyz_centroid);
-                EIGEN_ALIGN16 Eigen::Matrix3f covariance_matrix;
-                //computeCovarianceMatrixNormalized (incloud, xyz_centroid, covariance_matrix);
-                computeMeanAndCovarianceMatrix(incloud, *it, covariance_matrix, xyz_centroid);
-                EIGEN_ALIGN16 Eigen::Vector3f eigen_values;
-                EIGEN_ALIGN16 Eigen::Matrix3f eigen_vectors;
-                pcl::eigen33(covariance_matrix, eigen_vectors, eigen_values);
-                Eigen::Vector3f axes = K * Eigen::Vector3f(sqrt(eigen_values(0)), sqrt(eigen_values(1)), sqrt(eigen_values(2)));
-                Eigen::Vector3f center = Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
-
-                //New object
-                Object obj(objects.size(), center, covariance_matrix, eigen_values, eigen_vectors, axes);
-                if(obj.trainAppearance(pc_input, *it)){
-                    objects.push_back(obj);
-                    obj.blobID = id;
-                    std::vector<int> dummy;
-                    dummy.push_back(id);
-                    associations.push_back(dummy);
-
-                    cout << "New Object " << obj.id << " at t:" << t << " Center:";
-                    for(int ii=0; ii<3; ii++){
-                        std::cout << " ";
-                        std::cout << obj.e.center[ii];
-                    }
-                    std::cout << std::endl;
-                }*/
-
                 Object obj(objects.size(), &incloud, *it);
                 if(obj.GMM.isTrained()){
                     objects.push_back(obj);
@@ -271,7 +240,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                 objects[id].pointIndices.clear();
                 objects[id].pointIndices = it->indices;
                 id++;
-                //}
                 visualizeObjectCenter(pc_output, obj.e.center);
             }
             for(int j=0; j<objects.size(); j++){
@@ -336,8 +304,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                             sum_compatibility_emax += objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
                         }
 
-
-
                         /*for(int j=0; j<objects[obj_ind].ellipsoid_history_size; j++){
                             if(objects[obj_ind].distance(point) <= 1){
                                 sum_compatibility_history[j] +=  objects[obj_ind].pixelCompatibility(Object::rgb2UV(point));
@@ -394,22 +360,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
             {
                 if(associations[id].size() == 0){
                     //New object
-
-                    //if(t==12){
-                    /*Eigen::Vector4f xyz_centroid;
-                    //pcl::compute3DCentroid (incloud, *it, xyz_centroid);
-                    EIGEN_ALIGN16 Eigen::Matrix3f covariance_matrix;
-                    //computeCovarianceMatrixNormalized (incloud, xyz_centroid, covariance_matrix);
-                    computeMeanAndCovarianceMatrix(incloud, *it, covariance_matrix, xyz_centroid);
-                    EIGEN_ALIGN16 Eigen::Vector3f eigen_values;
-                    EIGEN_ALIGN16 Eigen::Matrix3f eigen_vectors;
-                    pcl::eigen33(covariance_matrix, eigen_vectors, eigen_values);
-                    Eigen::Vector3f axes = K * Eigen::Vector3f(sqrt(eigen_values(0)), sqrt(eigen_values(1)), sqrt(eigen_values(2)));
-                    Eigen::Vector3f center = Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
-
-                    //New object
-                    Object obj(objects.size(), center, covariance_matrix, eigen_values, eigen_vectors, axes);
-                    if(obj.trainAppearance(pc_input, *it)){*/
                     Object obj(objects.size(), &incloud, *it);
                     if(obj.GMM.isTrained()){
                         objects.push_back(obj);
@@ -426,31 +376,11 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     else{
                         std::cout << "ERROR: GMM not trained\n";
                     }
-
-                    //objects[obj.id].pointIndices.clear();
                     objects[obj.id].pointIndices = it->indices;
-
-                    //}
-                    //visualizeObjectCenter(pc_output, obj.e.center);
                 }
                 else if(associations[id].size() == 1 && objects[associations[id][0]].blobs.size()==0){
                     //One to one
-
                     std::cout << "Blob " << id << " 1-to-1 with object " << associations[id][0] << std::endl;
-
-                    /*Eigen::Vector4f xyz_centroid;
-                    //pcl::compute3DCentroid (incloud, *it, xyz_centroid);
-                    EIGEN_ALIGN16 Eigen::Matrix3f covariance_matrix;
-                    //computeCovarianceMatrixNormalized (incloud, xyz_centroid, covariance_matrix);
-                    computeMeanAndCovarianceMatrix(incloud, *it, covariance_matrix, xyz_centroid);
-                    EIGEN_ALIGN16 Eigen::Vector3f eigen_values;
-                    EIGEN_ALIGN16 Eigen::Matrix3f eigen_vectors;
-                    pcl::eigen33(covariance_matrix, eigen_vectors, eigen_values);
-                    Eigen::Vector3f axes = K * Eigen::Vector3f(sqrt(eigen_values(0)), sqrt(eigen_values(1)), sqrt(eigen_values(2)));
-                    Eigen::Vector3f center = Vector3f(xyz_centroid[0], xyz_centroid[1], xyz_centroid[2]);
-
-                    //Update object
-                    objects[associations[id][0]].updateObject(associations[id][0], center, covariance_matrix, eigen_values, eigen_vectors, axes);*/
                     int objID = associations[id][0];
                     objects[objID].pointIndices = it->indices;
                     objects[objID].is1to1 = true;
@@ -459,9 +389,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                     if(objects[objID].e.volume >= objects[objID].e_max.volume){
                         if(objects[objID].updateAppearance(&incloud, *it)){
                             objects[objID].blobID = id;
-
-                            //TODO The following push back is removed CHECK CHECK CHECK!!!
-                            //associations[id].push_back(objects[associations[id][0]].id);
 
                             /*cout << "Object updated at t:" << t << " Center:";
                         for(int ii=0; ii<3; ii++){
@@ -473,7 +400,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                         else{
                             std::cout << "ERROR: Object appearance could not be updated\n";
                         }
-                        //std::cout << "Blob " << id << " in one-to-one correspondence with object " << associations[id][0] << " at t=" << t << std::endl;
                     }
                     //Occluder list update
                     /*else{
@@ -486,14 +412,11 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                             }
                         }
                     }*/
-                    //visualizeObjectCenter(pc_output, objects[associations[id][0]].e.center);
                 }
-                //NEW CASE WITH AN OBJECT WITH MULTIPLE BLOBS
                 else if(associations[id].size() == 1 && objects[associations[id][0]].blobs.size()>0){
                     //One to one NEW CASE WITH AN OBJECT WITH MULTIPLE BLOBS
 
                     std::cout << "Blob " << id << " is part of object " << associations[id][0] << std::endl;
-
                     int objID = associations[id][0];
                     objects[objID].is1to1 = true;
                     objects[objID].divided = true;
@@ -541,7 +464,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                             }
                         }
                     }*/
-                    //visualizeObjectCenter(pc_output, objects[associations[id][0]].e.center);
                 }
                 else{
                     //Multiple Objects Case
@@ -603,23 +525,22 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                 id++;
             }
 
-
             //False positive check
             for(int j=0; j<objects.size()-1; j++){
                 for(int k=j+1; k<objects.size(); k++){
                     int l;
-                    int counter = 0;
+                    //float counter = 0;
                     for(l=0; l<objects[k].pointIndices.size(); l++){
                         PointT point = pc_input->points[l];
                         if(objects[j].distance(point, objects[j].e_max)>1){
                             break;
                         }
                         //if(objects[j].distance(point, objects[j].e_max)<=1){
-                        //    counter++;
+                        //    counter += 1;
                         //}
                     }
                     if(l==objects[k].pointIndices.size() && l>0){
-                    //if(counter/100 >=objects[k].pointIndices.size()*50 && l>0){
+                        //if(counter >= (float)l*0.9 && l>0){
                         std::cout << "Object " << k << " is totally in object " << j << std::endl;
                         std::cout << "Size: " << objects[j].pointIndices.size() << " --> ";
                         objects[k].false_positive = true;
@@ -628,7 +549,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
                         AB.insert(AB.end(), objects[j].pointIndices.begin(), objects[j].pointIndices.end());
                         AB.insert(AB.end(), objects[k].pointIndices.begin(), objects[k].pointIndices.end());
                         objects[k].pointIndices.clear();
-                        //objects[k].e.axes =  Eigen::Vector3f(0.0000000001, 0.0000000001, 0.0000000001);
                         objects[j].pointIndices.clear();
                         objects[j].pointIndices = AB;
                         std::cout << objects[j].pointIndices.size() << std::endl;
@@ -668,9 +588,6 @@ void PCSSegmentation::segmentation(PCS* input, PCS* output, int maxTime, int dow
             cout << "Bhatt " << k << " and " << l << " = " << Object::bhattacharyyaCoeff(objects[k].GMM, objects[l].GMM, 1) << endl;
         }
     }*/
-
-
-    //myfile.close();
     clock_gettime(CLOCK_MONOTONIC,  &t2);
     elapsed_time = (t2.tv_sec - t1.tv_sec) + (double) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
     std::cout << "Elapsed time: " << elapsed_time << std::endl;

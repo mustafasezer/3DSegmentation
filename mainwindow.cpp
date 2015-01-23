@@ -36,6 +36,12 @@ void MainWindow::on_actionOpen_PCS_triggered()
 
             QString filePath_raw = filePath;
             QString filePath_gt = filePath;
+
+            caseName = filePath;
+            caseName.truncate(filePath.lastIndexOf("_"));
+            caseName.remove(0,caseName.lastIndexOf("/")+1);
+            caseName.append("_proc.pcs");
+
             // loading raw data
             if(filePath.indexOf("_raw.pcs") != -1){
                 filePath_gt.replace("_raw.pcs", "_gt.pcs");
@@ -61,6 +67,7 @@ void MainWindow::on_actionOpen_PCS_triggered()
             else    isLoaded_gt = 1;
         }
     }
+    isLoaded_proc = false;
     if(isLoaded_raw){
         pclViewer_raw = new PCLViewer();
         pclViewer_raw->setPCS(pcs_raw);
@@ -95,6 +102,7 @@ void MainWindow::on_horizontalSlider_valueChanged(int value)
 {
     if(isLoaded_raw)    pclViewer_raw->showPCat(value);
     if(isLoaded_gt)    pclViewer_gt->showPCat(value);
+    if(isLoaded_proc)    pclViewer_proc->showPCat(value);
     if(isLoaded_result)    pclViewer_result->showPCat(value);
     if(isLoaded_result2)    pclViewer_result2->showPCat(value);
     if(isLoaded_result3)    pclViewer_result3->showPCat(value);
@@ -126,7 +134,9 @@ void MainWindow::on_pushButton_stop_clicked()
 {
     timer->stop();
     time = 0;
-    ui->horizontalSlider->setValue(time);    
+    ui->horizontalSlider->setValue(time);
+    ui->pushButton_start->setText("Start");
+    ui->pushButton_start->setChecked(false);
 }
 
 void MainWindow::on_pushButton_process1_clicked()
@@ -140,6 +150,20 @@ void MainWindow::on_pushButton_process1_clicked()
     }
     ui->horizontalSlider->setMaximum((maxTime-1)/downsample);
     seg.segmentation(pcs_raw, pcs_result, maxTime, downsample);
+    if(ui->writePCSCheckBox->isChecked()){
+        ofstream myfile;
+        QString path = QDir::homePath().append("/Desktop/DHRI_Mustafa/Results/");
+        if(QDir(path).exists() == false){
+            QDir(path).mkpath(".");
+        }
+        myfile.open(path.append(caseName).toAscii());
+        for(int t=0; t<pcs_result->pcs.size(); t++)
+            for(int i=0; i<pcs_result->pcs[t]->points.size(); i++){
+                PointT p = pcs_result->pcs[t]->points.at(i);
+                myfile << t << " " << p.x << " " << p.y << " " << p.z << " " << (int)p.r << " " << (int)p.g << " " << (int)p.b << std::endl;
+            }
+        myfile.close();
+    }
     pclViewer_result = new PCLViewer();
     pclViewer_result->setPCS(pcs_result);
     pclViewer_result->setWindowTitle("PCS Processing Result Data");
@@ -175,4 +199,37 @@ void MainWindow::on_pushButton_process1_3_clicked()
     pclViewer_result3->setGeometry(382+0,600,700,500);
     pclViewer_result3->show();
     isLoaded_result3 = 1;
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, tr("Open a PCL data file"),
+                                                    currentDirectory);
+    if (!filePath.isEmpty()){
+        currentDirectory = QFileInfo(filePath).path();
+        QString fileType = QFileInfo(filePath).suffix();
+
+        if(fileType == QString("pcs")){
+            pcs_proc = new PCS();
+            if(!(pcs_proc->loadFromFile(filePath.toStdString()))){
+                QMessageBox msg;
+                msg.setText("The selected file is not the proper type for loading a PCL data.");
+                msg.exec();
+            }
+            else    isLoaded_proc = 1;
+        }
+        if(isLoaded_proc){
+            pclViewer_proc = new PCLViewer();
+            pclViewer_proc->setPCS(pcs_proc);
+            pclViewer_proc->setWindowTitle("PCS Processing Result - Mustafa");
+            pclViewer_proc->setGeometry(382+700,0,700,500);
+            pclViewer_proc->show();
+            ui->lineEdit_time->setText(QString::number(pcs_proc->nTime));
+            ui->horizontalSlider->setMaximum(pcs_proc->nTime-1);
+            ui->horizontalSlider->setMinimum(0);
+            ui->horizontalSlider->setEnabled(1);
+            ui->pushButton_start->setEnabled(1);
+            ui->pushButton_stop->setEnabled(1);
+        }
+    }
 }

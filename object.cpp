@@ -126,6 +126,20 @@ double Object::distance(PointT p){
     return Eigen::Vector3f(e.normCov * (pt-e.center)).norm();
 }
 
+/*double Object::distance_cubed(PointT p){
+    double d1,d2,d3;
+    d1 = (p.x-e.center[0])/e.axes[0];
+    d2 = (p.y-e.center[1])/e.axes[1];
+    d3 = (p.z-e.center[2])/e.axes[2];
+
+    return pow(pow(d1,3)+pow(d2,3)+pow(d3,3), 1/3);
+
+
+
+    //Eigen::Vector3f pt(p.x, p.y, p.z);
+    //return Eigen::Vector3f(e.normCov * (pt-e.center)).norm();
+}*/
+
 double Object::distance(PointT p, ellipsoid ell){
     Eigen::Vector3f pt(p.x, p.y, p.z);
     return Eigen::Vector3f(ell.normCov * (pt-ell.center)).norm();

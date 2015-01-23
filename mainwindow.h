@@ -36,16 +36,19 @@ private slots:
 
     void on_pushButton_process1_3_clicked();
 
+    void on_pushButton_clicked();
+
 private:
     void setupgui();
 
 private:
     Ui::MainWindow *ui;
-    PCLViewer *pclViewer_raw, *pclViewer_result, *pclViewer_result2, *pclViewer_result3, *pclViewer_gt;
-    PCS *pcs_raw, *pcs_result, *pcs_result2, *pcs_result3, *pcs_gt;
+    PCLViewer *pclViewer_raw, *pclViewer_result, *pclViewer_result2, *pclViewer_result3, *pclViewer_gt, *pclViewer_proc;
+    PCS *pcs_raw, *pcs_result, *pcs_result2, *pcs_result3, *pcs_gt, *pcs_proc;
 
     QString currentDirectory;
-    bool isLoaded_raw, isLoaded_gt, isLoaded_result, isLoaded_result2, isLoaded_result3;
+    QString caseName;
+    bool isLoaded_raw, isLoaded_gt, isLoaded_proc, isLoaded_result, isLoaded_result2, isLoaded_result3;
     QTimer *timer;
     int time;
     int ms;
