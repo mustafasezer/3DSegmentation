@@ -1,6 +1,30 @@
 #include "mainwindow.h"
 #include "../src-build/ui_mainwindow.h"
 
+
+
+#include <QFileDialog>
+#include <QMessageBox>
+
+#include <pcl/point_types.h>
+#include <pcl/common/common.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/io/pcd_io.h>
+#include <vtkRenderWindow.h>
+#include <iostream>
+#include <boost/filesystem.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/bind.hpp>
+
+//pviz = pcl::visualization::PCLVisualizer("test_viz", false);
+
+pcl::visualization::PCLVisualizer pviz("visualize_mst", false);
+int v1(0);
+int v2(0);
+
+
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -16,6 +40,53 @@ MainWindow::MainWindow(QWidget *parent) :
     isLoaded_result = 0;
     isLoaded_result2 = 0;
     isLoaded_result3 = 0;
+    showResultOnViewport2 = true;
+    isLoaded_proc = false;
+
+    vtkSmartPointer<vtkRenderWindow> renderWindow = pviz.getRenderWindow();
+    ui->widget->SetRenderWindow (renderWindow);
+
+    pviz.setupInteractor (ui->widget->GetInteractor (), ui->widget->GetRenderWindow ());
+    pviz.getInteractorStyle ()->setKeyboardModifier (pcl::visualization::INTERACTOR_KB_MOD_SHIFT);
+
+
+
+    //boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    pviz.initCameraParameters ();
+
+    //int v1(0);
+    pviz.createViewPort(0.0, 0.0, 0.5, 1.0, v1);
+    //pviz.setBackgroundColor (0, 0, 0, v1);
+    pviz.addText("Euclidian Clustering", 10, 10, 19, 1.0, 1.0, 1.0, "v1 text", v1);
+    //pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+    //pviz.addPointCloud<pcl::PointXYZRGB> (cloud_xyz, "euclidian cloud", v1);
+
+    //int v2(0);
+    pviz.createViewPort(0.5, 0.0, 1.0, 1.0, v2);
+    //pviz.setBackgroundColor (0.3, 0.3, 0.3, v2);
+    pviz.addText("Mustafa Clustering", 10, 10, 19, 1.0, 1.0, 1.0, "v2 text", v2);
+    //pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> single_color(cloud, 0, 255, 0);
+    //pviz.addPointCloud<pcl::PointXYZRGB> (cloud_xyz, "mustafa cloud", v2);
+
+    pviz.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "euclidian cloud");
+    pviz.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "mustafa cloud");
+    //pviz.addCoordinateSystem (1.0);
+
+    //pviz.addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (cloud, normals1, 10, 0.05, "normals1", v1);
+    //pviz.addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (cloud, normals2, 10, 0.05, "normals2", v2);
+
+    //pviz.addPointCloud<pcl::PointXYZ>(cloud_xyz);
+    //pviz.setBackgroundColor(0, 0, 0.1);
+
+
+    pviz.resetCamera ();
+    pviz.setCameraPosition(0.5,0.5,0.5,0,0,0,0,0,1,v1);
+    pviz.setCameraPosition(1,0.5,0.5,0,0,0,0,0,1,v2);
+    pviz.addCoordinateSystem(0.1);
+
+
+    ui->widget->show();
+
 
 }
 
@@ -67,7 +138,6 @@ void MainWindow::on_actionOpen_PCS_triggered()
             else    isLoaded_gt = 1;
         }
     }
-    isLoaded_proc = false;
     if(isLoaded_raw){
         pclViewer_raw = new PCLViewer();
         pclViewer_raw->setPCS(pcs_raw);
@@ -93,13 +163,27 @@ void MainWindow::setupgui()
     ui->horizontalSlider->setEnabled(1);
     ui->pushButton_start->setEnabled(1);
     ui->pushButton_stop->setEnabled(1);
-    ui->pushButton_process1->setEnabled(1);
-    ui->pushButton_process1_2->setEnabled(true);
-    ui->pushButton_process1_3->setEnabled(true);
+    if(isLoaded_raw){
+        ui->pushButton_process1->setEnabled(1);
+        ui->pushButton_process1_2->setEnabled(true);
+        ui->pushButton_process1_3->setEnabled(true);
+    }
 }
 
 void MainWindow::on_horizontalSlider_valueChanged(int value)
 {
+
+    if(isLoaded_result3){
+        pviz.updatePointCloud(pcs_result3->pcs.at(value), "euclidian cloud");
+    }
+    if(isLoaded_proc && showResultOnViewport2==false){
+        pviz.updatePointCloud(pcs_proc->pcs.at(value), "mustafa cloud");
+    }
+    else if(isLoaded_result && showResultOnViewport2==true){
+        pviz.updatePointCloud(pcs_result->pcs.at(value), "mustafa cloud");
+    }
+    ui->widget->update ();
+
     if(isLoaded_raw)    pclViewer_raw->showPCat(value);
     if(isLoaded_gt)    pclViewer_gt->showPCat(value);
     if(isLoaded_proc)    pclViewer_proc->showPCat(value);
@@ -143,12 +227,15 @@ void MainWindow::on_pushButton_process1_clicked()
 {
     pcs_result = new PCS();
     PCSSegmentation seg;
+    if(ui->convertUntil->text().size() == 0){
+        ui->convertUntil->setText(QString::number(ui->horizontalSlider->maximum()));
+    }
     int maxTime = ui->convertUntil->text().toInt();
     int downsample = ui->downsample->text().toInt();
     if(maxTime>pcs_raw->nTime || maxTime<0){
         maxTime = pcs_raw->nTime;
     }
-    ui->horizontalSlider->setMaximum((maxTime-1)/downsample);
+    ui->horizontalSlider->setMaximum((maxTime)/downsample);
     seg.segmentation(pcs_raw, pcs_result, maxTime, downsample);
     if(ui->writePCSCheckBox->isChecked()){
         ofstream myfile;
@@ -164,6 +251,15 @@ void MainWindow::on_pushButton_process1_clicked()
             }
         myfile.close();
     }
+    ui->showResultRadioButton->setEnabled(true);
+    if(showResultOnViewport2==true){
+        pviz.removePointCloud("mustafa cloud", v2);
+        CloudPtr cptr = pcs_result->pcs.at(0);
+        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cptr);
+        pviz.addPointCloud<pcl::PointXYZRGB> (cptr, rgb, "mustafa cloud", v2);
+    }
+
+
     pclViewer_result = new PCLViewer();
     pclViewer_result->setPCS(pcs_result);
     pclViewer_result->setWindowTitle("PCS Processing Result Data");
@@ -193,6 +289,11 @@ void MainWindow::on_pushButton_process1_3_clicked()
     pcs_result3 = new PCS();
     PCSSegmentation seg;
     seg.segmentationEuclidian(pcs_raw, pcs_result3);
+    CloudPtr cptr = pcs_result3->pcs.at(0);
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cptr);
+    pviz.addPointCloud<pcl::PointXYZRGB> (cptr, rgb, "euclidian cloud", v1);
+
+
     pclViewer_result3 = new PCLViewer();
     pclViewer_result3->setPCS(pcs_result3);
     pclViewer_result3->setWindowTitle("Euclidian Clustering Result Data");
@@ -217,6 +318,7 @@ void MainWindow::on_pushButton_clicked()
                 msg.exec();
             }
             else    isLoaded_proc = 1;
+
         }
         if(isLoaded_proc){
             pclViewer_proc = new PCLViewer();
@@ -230,6 +332,33 @@ void MainWindow::on_pushButton_clicked()
             ui->horizontalSlider->setEnabled(1);
             ui->pushButton_start->setEnabled(1);
             ui->pushButton_stop->setEnabled(1);
+            ui->showLoadedRadioButton->setEnabled(true);
+            if(showResultOnViewport2==false){
+                pviz.removePointCloud("mustafa cloud", v2);
+                CloudPtr cptr = pcs_proc->pcs.at(0);
+                pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cptr);
+                pviz.addPointCloud<pcl::PointXYZRGB> (cptr, rgb, "mustafa cloud", v2);
+            }
+
         }
     }
+}
+
+void MainWindow::on_showResultRadioButton_clicked()
+{
+    showResultOnViewport2 = true;
+    pviz.removePointCloud("mustafa cloud", v2);
+    CloudPtr cptr = pcs_result->pcs.at(time);
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cptr);
+    pviz.addPointCloud<pcl::PointXYZRGB> (cptr, rgb, "mustafa cloud", v2);
+}
+
+void MainWindow::on_showLoadedRadioButton_clicked()
+{
+    showResultOnViewport2 = false;
+    pviz.removePointCloud("mustafa cloud", v2);
+    CloudPtr cptr = pcs_proc->pcs.at(time);
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cptr);
+    pviz.addPointCloud<pcl::PointXYZRGB> (cptr, rgb, "mustafa cloud", v2);
+
 }

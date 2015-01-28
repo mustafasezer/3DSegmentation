@@ -3,6 +3,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
+
 PCLViewer::PCLViewer (QWidget *parent) :
     QMainWindow (parent),
     ui (new Ui::PCLViewer)
@@ -11,7 +12,7 @@ PCLViewer::PCLViewer (QWidget *parent) :
     this->setWindowTitle ("PCL viewer");
 
     // Set up the QVTK window
-    viewer.reset (new pcl::visualization::PCLVisualizer ("viewer", false));    
+    viewer.reset (new pcl::visualization::PCLVisualizer ("viewer", false));
     ui->qvtkWidget->SetRenderWindow (viewer->getRenderWindow ());
     viewer->setupInteractor (ui->qvtkWidget->GetInteractor (), ui->qvtkWidget->GetRenderWindow ());
     ui->qvtkWidget->update ();

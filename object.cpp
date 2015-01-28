@@ -118,6 +118,9 @@ double Object::bhattacharyyaCoeff(cv::EM gmm1, cv::EM gmm2, int formula){
 }
 
 double Object::pixelRelation(PointT p){
+    //double com = pixelCompatibility(rgb2UV(p));
+    //double pwr = 2*log(com)-1;
+    //return com/pow(distance(p), pwr);
     return pixelCompatibility(rgb2UV(p))/(pow(distance(p), 3));
 }
 

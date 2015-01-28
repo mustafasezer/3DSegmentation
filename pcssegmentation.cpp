@@ -658,8 +658,8 @@ void PCSSegmentation::segmentationEuclidian(PCS* input, PCS* output){
         pc_output.reset(new Cloud);
 
         // euclidean clustering
-        double tolerance = 0.02;
-        double minSize = 5;
+        double tolerance = 0.04;
+        double minSize = 25;
         double maxSize = 10000;
         typename pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>);
         tree->setInputCloud (pc_input);

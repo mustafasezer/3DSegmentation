@@ -19,16 +19,18 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    //pcl::visualization::PCLVisualizer pviz;
+
 private slots:
     void on_actionOpen_PCS_triggered();
 
     void on_horizontalSlider_valueChanged(int value);
 
     void on_pushButton_start_clicked();
+
     void update();
+
     void on_pushButton_stop_clicked();
-
-
 
     void on_pushButton_process1_clicked();
 
@@ -37,6 +39,10 @@ private slots:
     void on_pushButton_process1_3_clicked();
 
     void on_pushButton_clicked();
+
+    void on_showResultRadioButton_clicked();
+
+    void on_showLoadedRadioButton_clicked();
 
 private:
     void setupgui();
@@ -52,6 +58,7 @@ private:
     QTimer *timer;
     int time;
     int ms;
+    bool showResultOnViewport2;
 };
 
 #endif // MAINWINDOW_H
